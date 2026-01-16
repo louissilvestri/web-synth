@@ -573,6 +573,68 @@ class Synth {
 
     // focus to capture keyboard
     container.tabIndex = 0; container.addEventListener('click', ()=>{ container.focus(); if(this.ctx.state === 'suspended') this.ctx.resume(); });
+
+    // bind MIDI controls (button/select)
+    this._bindMIDIControls();
+  }
+
+  _bindMIDIControls(){
+    const btn = document.getElementById('midi_enable');
+    const sel = document.getElementById('midi_inputs');
+    const status = document.getElementById('midi_status');
+    if(!btn || !status) return;
+    btn.addEventListener('click', async ()=>{
+      if(!navigator.requestMIDIAccess){ status.textContent = 'MIDI not supported'; return; }
+      status.textContent = 'Requesting...';
+      await this._requestMIDI();
+    });
+    if(sel){ sel.addEventListener('change', (e)=>{
+      const id = e.target.value; if(!this.midi || !this.midi.access) return; // detach previous
+      if(this.midi.input && typeof this.midi.input.onmidimessage === 'function') this.midi.input.onmidimessage = null;
+      const input = this.midi.access.inputs.get(id);
+      if(input){ this.midi.input = input; input.onmidimessage = (ev)=> this._onMIDIMessage(ev); }
+    }); }
+  }
+
+  async _requestMIDI(){
+    try{
+      const access = await navigator.requestMIDIAccess({ sysex: false });
+      this.midi = { access, input: null };
+      // populate inputs
+      this._updateMIDIDevices();
+      access.onstatechange = ()=> this._updateMIDIDevices();
+      // auto-select first input if available
+      const it = access.inputs.values().next();
+      if(!it.done){ const first = it.value; this.midi.input = first; first.onmidimessage = (ev)=> this._onMIDIMessage(ev); const status = document.getElementById('midi_status'); if(status) status.textContent = 'Connected: ' + first.name; const sel = document.getElementById('midi_inputs'); if(sel){ sel.value = first.id; sel.style.display = ''; } }
+      else { const status = document.getElementById('midi_status'); if(status) status.textContent = 'No MIDI inputs'; const sel = document.getElementById('midi_inputs'); if(sel) sel.style.display = 'none'; }
+    }catch(e){ const status = document.getElementById('midi_status'); if(status) status.textContent = 'Permission denied'; }
+  }
+
+  _updateMIDIDevices(){
+    if(!this.midi || !this.midi.access) return;
+    const sel = document.getElementById('midi_inputs');
+    if(!sel) return;
+    // clear
+    sel.innerHTML = '';
+    for(const input of this.midi.access.inputs.values()){
+      const opt = document.createElement('option'); opt.value = input.id; opt.textContent = input.name || input.manufacturer || input.id; sel.appendChild(opt);
+    }
+    if(this.midi.input){ sel.value = this.midi.input.id; sel.style.display = ''; const status = document.getElementById('midi_status'); if(status) status.textContent = 'Connected: ' + (this.midi.input.name || this.midi.input.id); }
+  }
+
+  _onMIDIMessage(ev){
+    const data = ev.data; const status = data[0] & 0xf0; const note = data[1]; const value = data[2];
+    if(status === 0x90){ // note on (velocity>0)
+      if(value > 0){ this.noteOn(note); this._highlightKey(note, true); }
+      else { this.noteOff(note); this._highlightKey(note, false); }
+    } else if(status === 0x80){ // note off
+      this.noteOff(note); this._highlightKey(note, false);
+    } else if(status === 0xB0){ // control change
+      // map CCs: 7->master, 74->filter cutoff, 1->lfo depth
+      if(note === 7){ const v = value/127; const el = document.getElementById('masterGain'); if(el){ el.value = v; this.master.gain.value = v; } }
+      else if(note === 74){ const norm = value/127; const min = 20, max = 20000; const cutoff = Math.round(min * Math.pow(max/min, norm)); const el = document.getElementById('filter_cutoff'); if(el){ el.value = cutoff; this.controls.filter.cutoff = cutoff; for(const v of this.voices.values()){ if(v.filter) v.filter.frequency.setValueAtTime(cutoff, this.ctx.currentTime); } } }
+      else if(note === 1){ const v = Math.round((value/127)*100); const el = document.getElementById('lfo_depth'); if(el){ el.value = v; this.controls.lfo.depth = v; this._updateLFODepth(); } }
+    }
   }
 
   _highlightKey(note, on){
@@ -595,6 +657,14 @@ class Synth {
       for(const v of this.voices.values()){ try{ v.release(this.ctx.currentTime, this.controls.ampADSR, this.controls.filterADSR); }catch(e){} }
       this.voices.clear();
     }catch(e){}
+
+    // cleanup MIDI handlers
+    try{
+      if(this.midi && this.midi.input && typeof this.midi.input.onmidimessage === 'function') this.midi.input.onmidimessage = null;
+      if(this.midi && this.midi.access && typeof this.midi.access.onstatechange === 'function') this.midi.access.onstatechange = null;
+      delete this.midi;
+    }catch(e){}
+
     // close audio context
     try{ if(this.ctx && typeof this.ctx.close === 'function'){ this.ctx.close().catch(()=>{}); } }catch(e){}
   }
