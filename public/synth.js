@@ -1,106 +1,9 @@
-// Simple subtractive synth with polyphony and per-voice LFO routing
-class Voice {
-  constructor(ctx, destination, controls, synth){
-    this.ctx = ctx;
-    this.controls = controls;
-    this.synth = synth;
+import { Voice } from './js/voice.js';
+import { sliderToGain } from './js/utils.js';
 
-    this.oscA = ctx.createOscillator();
-    this.oscB = ctx.createOscillator();
-    this.oscA.type = controls.oscA.wave;
-    this.oscB.type = controls.oscB.wave;
-    this.oscA.detune.value = controls.oscA.detune;
-    this.oscB.detune.value = controls.oscB.detune;
+// Voice implementation moved to ./js/voice.js; utils available from ./js/utils.js
 
-    this.gA = ctx.createGain(); this.gB = ctx.createGain();
-    // initial levels applied with mix
-    this.gA.gain.value = controls.oscA.level * (1 - controls.mix);
-    this.gB.gain.value = controls.oscB.level * controls.mix;
 
-    this.filter = ctx.createBiquadFilter();
-    this.filter.type = controls.filter.type;
-    this.filter.frequency.value = controls.filter.cutoff;
-    this.filter.Q.value = controls.filter.Q;
-
-    this.envGain = ctx.createGain(); this.envGain.gain.value = 0;
-
-    // routing
-    this.oscA.connect(this.gA); this.oscB.connect(this.gB);
-    this.gA.connect(this.filter); this.gB.connect(this.filter);
-
-    // per-voice noise gain: connected from synth.noiseOutput so noise hits the same filter and env
-    this.noiseGain = ctx.createGain(); this.noiseGain.gain.value = 0;
-    if(this.synth && this.synth.noiseOutput) this.synth.noiseOutput.connect(this.noiseGain);
-    this.noiseGain.connect(this.filter);
-
-    this.filter.connect(this.envGain);
-    this.envGain.connect(destination);
-
-    // route voice output to global effects inputs so effects are applied post-AMP ADSR
-    if(this.synth && this.synth.effects){
-      try{ if(this.synth.effects.phase && this.synth.effects.phase.input) this.envGain.connect(this.synth.effects.phase.input); }catch(e){}
-      try{ if(this.synth.effects.delay && this.synth.effects.delay.input) this.envGain.connect(this.synth.effects.delay.input); }catch(e){}
-      try{ if(this.synth.effects.chorus && this.synth.effects.chorus.input) this.envGain.connect(this.synth.effects.chorus.input); }catch(e){}
-    }
-
-    // LFO nodes for this voice (created but only connected if synth enables them)
-    this.lfoNodes = {};
-
-    this.started = false;
-
-    // set up LFO nodes (synth will connect/disconnect based on enabled targets)
-    this.synth._attachLFOToVoice(this);
-  }
-
-  start(noteFreq, now, ampADSR, filterADSR, controls){
-    if(!this.started){
-      this.oscA.start(now); this.oscB.start(now); this.started = true;
-    }
-    // set types & detune in case changed
-    this.oscA.type = controls.oscA.wave; this.oscB.type = controls.oscB.wave;
-    this.oscA.detune.value = controls.oscA.detune; this.oscB.detune.value = controls.oscB.detune;
-
-    // apply levels taking mix into account
-    this.gA.gain.value = controls.oscA.level * (1 - controls.mix);
-    this.gB.gain.value = controls.oscB.level * controls.mix;
-
-    this.oscA.frequency.setValueAtTime(noteFreq, now);
-    this.oscB.frequency.setValueAtTime(noteFreq, now);
-    // set per-voice noise level (routed through the same filter & amp env)
-    if(this.noiseGain){ const g = this.synth._sliderToGain(controls.noiseLevel); this.noiseGain.gain.setValueAtTime(g, now); }
-
-    // amp ADSR
-    const a = ampADSR.a, d = ampADSR.d, s = ampADSR.s;
-    const sustainLevel = s;
-    this.envGain.gain.cancelScheduledValues(now);
-    this.envGain.gain.setValueAtTime(0, now);
-    this.envGain.gain.linearRampToValueAtTime(1, now + a);
-    this.envGain.gain.linearRampToValueAtTime(sustainLevel, now + a + d);
-
-    // filter envelope applied by scheduling cutoff freq changes
-    const baseCutoff = controls.filter.cutoff;
-    const envAmt = controls.filter.envAmt;
-    const fA = filterADSR.a, fD = filterADSR.d, fS = filterADSR.s;
-    this.filter.frequency.cancelScheduledValues(now);
-    this.filter.frequency.setValueAtTime(baseCutoff, now);
-    const peak = baseCutoff + envAmt;
-    this.filter.frequency.linearRampToValueAtTime(peak, now + fA);
-    this.filter.frequency.linearRampToValueAtTime(baseCutoff + envAmt * fS, now + fA + fD);
-  }
-
-  release(now, ampADSR, filterADSR){
-    const r = ampADSR.r;
-    this.envGain.gain.cancelScheduledValues(now);
-    this.envGain.gain.setValueAtTime(this.envGain.gain.value, now);
-    this.envGain.gain.linearRampToValueAtTime(0, now + r);
-
-    // schedule stop slightly after release and detach LFO nodes
-    setTimeout(()=>{
-      try{ this.oscA.stop(); this.oscB.stop(); }catch(e){}
-      this.synth._detachLFOFromVoice(this);
-    }, (r+0.1)*1000);
-  }
-}
 
 class Synth {
   constructor(){
@@ -163,12 +66,8 @@ class Synth {
 
   // convert slider (0..1) to an exponential gain (dB scale)
   _sliderToGain(s){
-    // Gentler curve: use sqrt(s) and a smaller dynamic range so low settings are audible
-    if(!s || s <= 0) return 0;
-    const dBMin = -30; // lower bound in dB (less attenuation than before)
-    const curved = Math.sqrt(s); // emphasize low end
-    const dB = dBMin * (1 - curved); // when s=1 => 0dB, s small => near dBMin
-    return Math.pow(10, dB / 20);
+    // Delegates to shared utility for testability
+    return sliderToGain(s);
   }
 
   // create continuous noise buffer and start it
@@ -217,9 +116,9 @@ class Synth {
             else m.classList.add('on','red');
           }
         });
-        requestAnimationFrame(update);
+        this._vuRafId = requestAnimationFrame(update);
       };
-      requestAnimationFrame(update);
+      this._vuRafId = requestAnimationFrame(update);
     }catch(e){}
   }
 
@@ -643,10 +542,31 @@ class Synth {
     const keys = document.querySelectorAll('#keyboard .key');
     keys.forEach(k=>{ if(parseInt(k.dataset.note)===note){ if(on) k.classList.add('active'); else k.classList.remove('active'); }});
   }
+
+  // Dispose/cleanup to stop audio, animation loops, and free resources
+  dispose(){
+    // stop VU meter loop
+    try{ this._vuRunning = false; if(this._vuRafId) cancelAnimationFrame(this._vuRafId); }catch(e){}
+    // stop and disconnect noise source
+    try{
+      if(this._noiseSource){ try{ this._noiseSource.stop(); }catch(e){} try{ this._noiseSource.disconnect(); }catch(e){} }
+      try{ if(this.noiseOutput){ this.noiseOutput.disconnect(); } }catch(e){}
+      delete this._noiseSource;
+    }catch(e){}
+    // release voices
+    try{
+      for(const v of this.voices.values()){ try{ v.release(this.ctx.currentTime, this.controls.ampADSR, this.controls.filterADSR); }catch(e){} }
+      this.voices.clear();
+    }catch(e){}
+    // close audio context
+    try{ if(this.ctx && typeof this.ctx.close === 'function'){ this.ctx.close().catch(()=>{}); } }catch(e){}
+  }
 }
 
 window.addEventListener('load', ()=>{
   const synth = new Synth();
   // expose to console for tinkering
   window.synth = synth;
+  // ensure cleanup on page unload to release audio resources and stop animation loops
+  window.addEventListener('beforeunload', ()=>{ try{ if(window.synth && typeof window.synth.dispose === 'function'){ window.synth.dispose(); } }catch(e){} });
 });
