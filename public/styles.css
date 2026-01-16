@@ -86,6 +86,7 @@ label.led input[type=checkbox]:checked + .led-indicator{background:#ff3b3b;box-s
 
 /* VU meter */
 .master-control{display:flex;align-items:center;gap:10px}
+.oscilloscope{width:200px;height:64px;border-radius:6px;background:linear-gradient(90deg,#001a0f,#00120a);border:1px solid rgba(124,255,107,0.06);box-shadow:0 2px 8px rgba(0,0,0,0.45);margin-left:8px}
 .vu-meter{display:flex;flex-direction:column-reverse;gap:5px;margin-left:10px;padding-left:6px;align-items:center;justify-content:center;height:64px} 
 .vu-led{width:14px;height:10px;border-radius:3px;background:#082208;box-shadow:inset 0 -2px 4px rgba(0,0,0,0.6)}
 .vu-led.on.green{background:#3bff7b;box-shadow:0 0 8px rgba(59,255,123,0.8)}

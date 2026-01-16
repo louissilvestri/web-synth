@@ -16,8 +16,8 @@ class Synth {
     this.controls = this._readControls();
 
     // Start VU meter
-    this._startVUMeter();
-
+    this._startVUMeter();    // Start oscilloscope (draws waveform from the same analyser)
+    this._startOscilloscope();
     // Noise source -> shared output (we'll connect it into each voice so it's gated by AMP ADSR)
     this.noiseOutput = this.ctx.createGain();
     this.noiseOutput.gain.value = 1.0; // overall noise bus
@@ -119,6 +119,43 @@ class Synth {
         this._vuRafId = requestAnimationFrame(update);
       };
       this._vuRafId = requestAnimationFrame(update);
+    }catch(e){}
+  }
+
+  _startOscilloscope(){
+    try{
+      const canvas = document.getElementById('oscilloscope');
+      if(!canvas) return;
+      const ctx = canvas.getContext('2d');
+      this._oscBuf = new Uint8Array(this.analyser.fftSize || 2048);
+      this._oscRunning = true;
+      const draw = ()=>{
+        if(!this._oscRunning) return;
+        this.analyser.getByteTimeDomainData(this._oscBuf);
+        const dpr = window.devicePixelRatio || 1;
+        const W = Math.max(1, Math.floor(canvas.clientWidth * dpr));
+        const H = Math.max(1, Math.floor(canvas.clientHeight * dpr));
+        if(canvas.width !== W || canvas.height !== H){ canvas.width = W; canvas.height = H; }
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        // background subtle
+        ctx.fillStyle = 'rgba(0,0,0,0)';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        // draw waveform
+        ctx.lineWidth = 2 * dpr;
+        ctx.strokeStyle = '#7CFF6B';
+        ctx.beginPath();
+        const centerY = canvas.height / 2;
+        const slice = canvas.width / this._oscBuf.length;
+        for(let i=0;i<this._oscBuf.length;i++){
+          const v = (this._oscBuf[i] - 128) / 128; // -1..1
+          const x = i * slice;
+          const y = centerY + v * centerY * 0.95;
+          if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.stroke();
+        this._oscRafId = requestAnimationFrame(draw);
+      };
+      this._oscRafId = requestAnimationFrame(draw);
     }catch(e){}
   }
 

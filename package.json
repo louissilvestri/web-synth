@@ -3,12 +3,25 @@
   "version": "1.0.0",
   "description": "HTML5 subtractive synthesizer using Web Audio API",
   "main": "server.js",
+  "engines": {
+    "node": ">=14"
+  },
   "scripts": {
     "start": "node server.js",
+    "prestart": "npm run sync-utils",
     "dev": "nodemon server.js",
     "lint": "eslint . --ext .js --max-warnings=0",
+    "sync-utils": "node scripts/sync-utils.js",
+    "pretest": "npm run sync-utils",
     "test": "jest --coverage"
   },
+  "files": [
+    "public/",
+    "server.js",
+    "lib/",
+    "README.md",
+    "LICENSE"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/louissilvestri/web-synth.git"
