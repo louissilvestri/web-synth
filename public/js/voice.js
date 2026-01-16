@@ -39,7 +39,15 @@ export class Voice {
     if(this.synth && this.synth.effects){
       try{ if(this.synth.effects.phase && this.synth.effects.phase.input) this.envGain.connect(this.synth.effects.phase.input); }catch(e){}
       try{ if(this.synth.effects.delay && this.synth.effects.delay.input) this.envGain.connect(this.synth.effects.delay.input); }catch(e){}
-      try{ if(this.synth.effects.chorus && this.synth.effects.chorus.input) this.envGain.connect(this.synth.effects.chorus.input); }catch(e){}
+      try{
+        if(this.synth.effects.chorus){
+          if(this.synth.effects.chorus.perVoice && this.synth._createPerVoiceChorusForVoice){
+            try{ const per = this.synth._createPerVoiceChorusForVoice(this); if(per && per.input){ this.envGain.connect(per.input); this.perVoiceChorus = per; } }catch(e){}
+          } else {
+            try{ if(this.synth.effects.chorus.input) this.envGain.connect(this.synth.effects.chorus.input); }catch(e){}
+          }
+        }
+      }catch(e){}
     }
 
     // LFO nodes for this voice (created but only connected if synth enables them)

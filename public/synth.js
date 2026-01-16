@@ -290,16 +290,27 @@ class Synth {
     this.effects.delay.delay.connect(this.effects.delay.wet);
     this.effects.delay.wet.connect(this.master);
 
-    // Chorus: multiple modulated short delays
+    // Chorus: ensemble chorus + per-voice mode
     this.effects.chorus = {};
     this.effects.chorus.input = ctx.createGain();
     this.effects.chorus.wet = ctx.createGain(); this.effects.chorus.wet.gain.value = 0;
     this.effects.chorus.voices = [];
     this.effects.chorus.baseDelay = 0.01; // 10ms base
     this.effects.chorus.depth = 0.007; // modulation depth
+    this.effects.chorus.perVoice = false; // when true, each synth voice gets its own small chorus
 
     this.effects.chorus.input.connect(this.effects.chorus.wet); // dry route through wet for simple mix
-    this.effects.chorus.wet.connect(this.master);
+    // normalization output gain (we measure RMS here and adjust this gain)
+    this.effects.chorus.output = ctx.createGain(); this.effects.chorus.output.gain.value = 1.0;
+    this.effects.chorus.wet.connect(this.effects.chorus.output);
+    this.effects.chorus.output.connect(this.master);
+    // analyser for RMS measurement (parallel branch; does not alter routing)
+    this.effects.chorus.analyser = ctx.createAnalyser(); this.effects.chorus.analyser.fftSize = 1024;
+    this.effects.chorus.output.connect(this.effects.chorus.analyser);
+    this.effects.chorus._normTargetRms = 0.12; // target RMS (linear)
+    // clamp normalization gain more tightly to avoid level spikes
+    this.effects.chorus._normClamp = { min: 0.6, max: 1.2 }; // clamp normalization gain (approx -4.4dB .. +1.6dB)
+    this.effects.chorus._normBuf = new Float32Array(this.effects.chorus.analyser.fftSize);
 
     // defaults
     this.setPhaseLevel(0);
@@ -308,6 +319,11 @@ class Synth {
     this.setDelayRate(0.3);
     this.setChorusLevel(0);
     this.setChorusVoices(2);
+
+    // start chorus RMS normalization loop
+    try{ this._startChorusRMSNormalization(); }catch(e){}
+
+
 
     // setup VU meter sample buffer
     this._vuBuf = new Uint8Array(this.analyser.frequencyBinCount || 1024);
@@ -344,26 +360,113 @@ class Synth {
   setDelayLevel(v){ if(this.effects && this.effects.delay) this.effects.delay.wet.gain.setValueAtTime(v, this.ctx.currentTime); }
   setDelayRate(r){ if(this.effects && this.effects.delay){ const t = Math.max(0.001, r * 0.8); this.effects.delay.delay.delayTime.setValueAtTime(t, this.ctx.currentTime); } }
 
-  // Chorus control - dynamic voices
+  // Chorus control - dynamic voices (global ensemble or per-voice mode)
   setChorusLevel(v){ if(this.effects && this.effects.chorus) this.effects.chorus.wet.gain.setValueAtTime(v, this.ctx.currentTime); }
-  setChorusVoices(n){ if(!this.effects || !this.effects.chorus) return; n = Math.max(1, Math.min(4, Math.round(n)));
-    // stop existing voices
-    if(this.effects.chorus.voices){
-      for(const pv of this.effects.chorus.voices){ try{ pv.lfo.stop(); }catch(e){} try{ pv.delay.disconnect(); }catch(e){} }
+  setChorusVoices(n){ if(!this.effects || !this.effects.chorus) return; n = Math.max(1, Math.min(6, Math.round(n)));
+    // interpret 6 as "per-voice mode"
+    if(n === 6){
+      this.effects.chorus.perVoice = true;
+      // tear down any existing global voices
+      if(this.effects.chorus.voices){ for(const pv of this.effects.chorus.voices){ try{ pv.lfo.stop(); }catch(e){} try{ pv.delay.disconnect(); pv.panner.disconnect(); }catch(e){} } }
+      this.effects.chorus.voices = [];
+      // rewire existing active synth voices into per-voice chorus chains
+      try{ for(const v of this.voices.values()){ try{ v.envGain.disconnect(this.effects.chorus.input); }catch(e){} try{ const per = this._createPerVoiceChorusForVoice(v); if(per && per.input){ v.envGain.connect(per.input); v.perVoiceChorus = per; } }catch(e){} } }catch(e){}
+      return;
+    } else {
+      // switching back to global chorus: remove any per-voice chorus chains
+      this.effects.chorus.perVoice = false;
+      try{ for(const v of this.voices.values()){ try{ if(v.perVoiceChorus){ for(const pv of v.perVoiceChorus.voices){ try{ pv.lfo.stop(); }catch(e){} try{ pv.delay.disconnect(); pv.panner.disconnect(); }catch(e){} } try{ v.perVoiceChorus.input.disconnect(); }catch(e){} try{ v.perVoiceChorus.wet.disconnect(); }catch(e){} delete v.perVoiceChorus; } }catch(e){} try{ v.envGain.connect(this.effects.chorus.input); }catch(e){} } }catch(e){}
     }
+
+    // stop existing voices cleanly and rebuild
+    if(this.effects.chorus.voices){ for(const pv of this.effects.chorus.voices){ try{ pv.lfo.stop(); }catch(e){} try{ pv.delay.disconnect(); pv.panner.disconnect(); }catch(e){} } }
     this.effects.chorus.voices = [];
+
+    const spread = 0.6; // static pan spread
     for(let i=0;i<n;i++){
       const delay = this.ctx.createDelay(0.2);
       const lfo = this.ctx.createOscillator(); lfo.type = 'sine';
-      const lfoGain = this.ctx.createGain(); lfoGain.gain.value = this.effects.chorus.depth;
-      lfo.frequency.value = 0.2 + i*0.15;
-      lfo.connect(lfoGain); lfoGain.connect(delay.delayTime);
-      // route
-      this.effects.chorus.input.connect(delay);
-      delay.connect(this.effects.chorus.wet);
-      try{ lfo.start(); }catch(e){}
-      this.effects.chorus.voices.push({delay,lfo,lfoGain});
+      const lfoGain = this.ctx.createGain(); lfoGain.gain.setTargetAtTime(this.effects.chorus.depth, this.ctx.currentTime, 0.05);
+        // tie chorus LFO rate to global LFO (small per-voice detune for richness)
+        const baseFactor = 0.2 + i * 0.08 + (Math.random()*0.02 - 0.01);
+        try{ lfo.frequency.setTargetAtTime(Math.max(0.001, this.controls.lfo.rate * baseFactor), this.ctx.currentTime, 0.05); }catch(e){ lfo.frequency.value = Math.max(0.001, this.controls.lfo.rate * baseFactor); }
+        lfo.connect(lfoGain); lfoGain.connect(delay.delayTime);
+        const panner = this.ctx.createStereoPanner();
+        // static pan across the stereo field, then add LFO-linked modulation
+        const staticPan = (n===1) ? 0 : ((i/(n-1))*2 -1) * spread;
+        try{ panner.pan.setValueAtTime(staticPan, this.ctx.currentTime); }catch(e){}
+        // pan modulation gain controlled by global LFO depth (spread)
+        const panGain = this.ctx.createGain(); panGain.gain.setTargetAtTime((this.controls.lfo.depth/100) * 0.8, this.ctx.currentTime, 0.05);
+        try{ this.lfo.connect(panGain); panGain.connect(panner.pan); }catch(e){}
+        // routing
+        this.effects.chorus.input.connect(delay);
+        delay.connect(panner);
+        panner.connect(this.effects.chorus.wet);
+        try{ lfo.start(); }catch(e){}
+        this.effects.chorus.voices.push({idx:i,delay,lfo,lfoGain,panner,panGain});
+      }
     }
+
+  // apply a smoothed chorus modulation depth update across active global & per-voice chains
+  setChorusDepth(d){
+    if(!this.effects || !this.effects.chorus) return;
+    this.effects.chorus.depth = d;
+    const now = this.ctx.currentTime;
+    try{
+      if(this.effects.chorus.voices){ for(const pv of this.effects.chorus.voices){ try{ pv.lfoGain.gain.setTargetAtTime(d, now, 0.05); }catch(e){} } }
+      for(const v of this.voices.values()){
+        if(v.perVoiceChorus && v.perVoiceChorus.voices){ for(const pv of v.perVoiceChorus.voices){ try{ pv.lfoGain.gain.setTargetAtTime(d, now, 0.05); }catch(e){} } }
+      }
+    }catch(e){}
+  }
+
+  // keep chorus voice LFOs in sync with global LFO rate (smoothed)
+  setChorusRate(r){
+    if(!this.effects || !this.effects.chorus) return;
+    const now = this.ctx.currentTime;
+    try{
+      if(this.effects.chorus.voices){
+        for(const pv of this.effects.chorus.voices){
+          const factor = 0.2 + (pv.idx||0) * 0.08 + (Math.random()*0.02 - 0.01);
+          try{ pv.lfo.frequency.setTargetAtTime(Math.max(0.001, r * factor), now, 0.05); }catch(e){ pv.lfo.frequency.value = Math.max(0.001, r * factor); }
+        }
+      }
+      for(const v of this.voices.values()){
+        if(v.perVoiceChorus && v.perVoiceChorus.voices){
+          for(const pv of v.perVoiceChorus.voices){
+            const factor = 0.18 + (pv.idx||0) * 0.03 + (Math.random()*0.02 - 0.01);
+            try{ pv.lfo.frequency.setTargetAtTime(Math.max(0.001, r * factor), now, 0.05); }catch(e){ pv.lfo.frequency.value = Math.max(0.001, r * factor); }
+          }
+        }
+      }
+    }catch(e){}
+  }
+
+  // RMS-based chorus normalization helpers
+  _startChorusRMSNormalization(){
+    try{ if(this._chorusNormInterval) return; const fn = ()=>{ this._measureAndApplyChorusNorm(); }; this._chorusNormInterval = setInterval(fn, 50); // run ~20Hz
+      // ensure cleanup on page unload
+      try{ window.addEventListener('unload', ()=>{ try{ this._stopChorusRMSNormalization(); }catch(e){} }); }catch(e){}
+    }catch(e){}
+  }
+
+  _stopChorusRMSNormalization(){ try{ if(this._chorusNormInterval){ clearInterval(this._chorusNormInterval); delete this._chorusNormInterval; } }catch(e){}
+  }
+
+  _measureAndApplyChorusNorm(){
+    try{
+      if(!this.effects || !this.effects.chorus || !this.effects.chorus.analyser) return;
+      const an = this.effects.chorus.analyser; const buf = this.effects.chorus._normBuf; an.getFloatTimeDomainData(buf);
+      let sum = 0; for(let i=0;i<buf.length;i++){ const v = buf[i]; sum += v*v; }
+      const rms = Math.sqrt(sum / buf.length) || 1e-8;
+      // desired target scaled by user wet level so slider still behaves as expected
+      const targetRmsEffective = this.effects.chorus._normTargetRms * (this.effects.chorus.wet ? this.effects.chorus.wet.gain.value : 1);
+      let requiredGain = targetRmsEffective / rms;
+      // clamp to avoid extreme boosts/cuts
+      requiredGain = Math.max(this.effects.chorus._normClamp.min, Math.min(this.effects.chorus._normClamp.max, requiredGain));
+      // smooth target application
+      try{ this.effects.chorus.output.gain.setTargetAtTime(requiredGain, this.ctx.currentTime, 0.08); }catch(e){ this.effects.chorus.output.gain.value = requiredGain; }
+    }catch(e){}
   }
 
   // Attach LFO nodes to a new voice and connect according to enabled targets
@@ -442,6 +545,8 @@ class Synth {
             try{ voice.envGain.disconnect(this.effects.phase.input); }catch(e){}
             try{ voice.envGain.disconnect(this.effects.delay.input); }catch(e){}
             try{ voice.envGain.disconnect(this.effects.chorus.input); }catch(e){}
+            // clean up per-voice chorus if present
+            try{ if(voice.perVoiceChorus){ for(const pv of voice.perVoiceChorus.voices){ try{ pv.lfo.stop(); }catch(e){} try{ pv.delay.disconnect(); pv.panner.disconnect(); }catch(e){} } try{ voice.perVoiceChorus.input.disconnect(); }catch(e){} try{ voice.perVoiceChorus.wet.disconnect(); }catch(e){} delete voice.perVoiceChorus; } }catch(e){}
           }
         }
       }catch(e){}
@@ -467,6 +572,15 @@ class Synth {
       this._updateLFONodeGain(v.lfoNodes.filter_q, (c.lfo.depth/100)*t.filterQ);
       this._updateLFONodeGain(v.lfoNodes.mixA, (c.lfo.depth/100)*t.mix);
       this._updateLFONodeGain(v.lfoNodes.mixB, -(c.lfo.depth/100)*t.mix);
+    }
+    // update chorus pan modulation amplitudes (spread) to follow LFO depth
+    if(this.effects && this.effects.chorus){
+      const panAmp = (c.lfo.depth/100) * 0.8;
+      try{
+        if(this.effects.chorus.voices){ for(const pv of this.effects.chorus.voices){ if(pv.panGain && pv.panGain.gain) pv.panGain.gain.setTargetAtTime(panAmp, this.ctx.currentTime, 0.05); } }
+        // update any per-voice chorus pieces attached to active voices
+        for(const v of this.voices.values()){ if(v.perVoiceChorus && v.perVoiceChorus.voices){ for(const pv of v.perVoiceChorus.voices){ if(pv.panGain && pv.panGain.gain) pv.panGain.gain.setTargetAtTime((c.lfo.depth/100) * 0.6, this.ctx.currentTime, 0.05); } } }
+      }catch(e){}
     }
   }
 
@@ -636,7 +750,7 @@ class Synth {
     document.getElementById('osc_mix').addEventListener('input',(e)=>{ this.controls.mix = parseFloat(e.target.value); this._updateAllVoicesLevels(); });
 
     // LFO
-    document.getElementById('lfo_rate').addEventListener('input',(e)=>{ this.controls.lfo.rate = parseFloat(e.target.value); this.lfo.frequency.value = this.controls.lfo.rate; try{ if(this.effects && this.effects.phase && this.effects.phase.experimental && this.effects.phase.experimental.lfo){ this.effects.phase.experimental.lfo.frequency.setValueAtTime(this.controls.lfo.rate, this.ctx.currentTime); } }catch(ex){} });
+    document.getElementById('lfo_rate').addEventListener('input',(e)=>{ this.controls.lfo.rate = parseFloat(e.target.value); this.lfo.frequency.value = this.controls.lfo.rate; try{ if(this.effects && this.effects.phase && this.effects.phase.experimental && this.effects.phase.experimental.lfo){ this.effects.phase.experimental.lfo.frequency.setValueAtTime(this.controls.lfo.rate, this.ctx.currentTime); } }catch(ex){} try{ this.setChorusRate(this.controls.lfo.rate); }catch(ex){} });
     document.getElementById('lfo_depth').addEventListener('input',(e)=>{ this.controls.lfo.depth = parseFloat(e.target.value); this._updateLFODepth(); });
     document.querySelectorAll('.lfo_target').forEach(cb=>{
       cb.addEventListener('change',(e)=>{ this.setLfoTarget(cb.value, cb.checked); });
