@@ -41,6 +41,7 @@ class Synth {
 
     this._setupLFO();
     this._createEffects();
+    try{ if(typeof this._enableExperimentalPhaser === 'function') this._enableExperimentalPhaser(true); }catch(e){}
     this._buildUI();
   }
 
@@ -227,6 +228,55 @@ class Synth {
     this.effects.phase.panner.connect(this.effects.phase.wet);
     this.effects.phase.wet.connect(this.master);
 
+    // experimental phaser (created only when user enables it) — kept separate to avoid breaking existing behavior
+    this.effects.phase.experimental = null;
+
+    this._enableExperimentalPhaser = (enable)=>{
+      try{
+        if(enable){
+          if(this.effects.phase.experimental) return;
+          const ph = {};
+          ph.input = this.ctx.createGain();
+          ph.stages = 6;
+          ph.allpasses = [];
+          let prev = ph.input;
+          const base = 600;
+          for(let i=0;i<ph.stages;i++){
+            const ap = this.ctx.createBiquadFilter(); ap.type = 'allpass'; ap.frequency.value = base + i*200; prev.connect(ap); prev = ap; ph.allpasses.push(ap);
+          }
+          ph.panner = this.ctx.createStereoPanner(); ph.wet = this.ctx.createGain(); ph.wet.gain.value = 0;
+          prev.connect(ph.panner); ph.panner.connect(ph.wet); ph.wet.connect(this.master);
+          // feedback
+          ph.feedback = this.ctx.createGain(); ph.feedback.gain.value = 0.25; try{ prev.connect(ph.feedback); ph.feedback.connect(ph.input); }catch(e){}
+          // lfo
+          ph.lfo = this.ctx.createOscillator(); ph.lfo.type = 'sine'; ph.lfo.frequency.value = this.controls.lfo.rate || 0.25;
+          ph.lfoGain = this.ctx.createGain(); ph.lfoGain.gain.value = 200;
+          ph.lfo.connect(ph.lfoGain);
+          for(const ap of ph.allpasses){ try{ ph.lfoGain.connect(ap.frequency); }catch(e){} }
+          try{ ph.lfo.start(); }catch(e){}
+          this.effects.phase.experimental = ph;
+          // route phase input to phaser input
+          try{ this.effects.phase.input.disconnect(); }catch(e){}
+          try{ this.effects.phase.input.connect(ph.input); }catch(e){}
+          // mute original simple phase wet
+          try{ this.effects.phase.wet.gain.setValueAtTime(0, this.ctx.currentTime); }catch(e){}
+        } else {
+          if(!this.effects.phase.experimental) return;
+          const ph = this.effects.phase.experimental;
+          try{ if(ph.lfo) try{ ph.lfo.stop(); }catch(e){} }catch(e){}
+          try{ if(ph.lfoGain) ph.lfoGain.disconnect(); }catch(e){}
+          try{ if(ph.feedback) ph.feedback.disconnect(); }catch(e){}
+          try{ for(const ap of ph.allpasses) ap.disconnect(); }catch(e){}
+          try{ ph.panner.disconnect(); ph.wet.disconnect(); }catch(e){}
+          // restore original routing
+          try{ this.effects.phase.input.disconnect(); }catch(e){}
+          try{ this.effects.phase.input.connect(this.effects.phase.allpass1); }catch(e){}
+          try{ this.effects.phase.wet.gain.setValueAtTime(0, this.ctx.currentTime); }catch(e){}
+          this.effects.phase.experimental = null;
+        }
+      }catch(e){ console.error('Experimental phaser error', e); }
+    };
+
     // Delay: simple feedback delay
     this.effects.delay = {};
     this.effects.delay.input = ctx.createGain();
@@ -264,8 +314,31 @@ class Synth {
   }
 
   // Phase control
-  setPhaseLevel(v){ if(this.effects && this.effects.phase) this.effects.phase.wet.gain.setValueAtTime(v, this.ctx.currentTime); }
-  setPhaseWidth(w){ if(this.effects && this.effects.phase){ const pan = (w*2 - 1); this.effects.phase.panner.pan.setValueAtTime(pan, this.ctx.currentTime); const freq = 500 + w*3000; this.effects.phase.allpass1.frequency.setValueAtTime(freq, this.ctx.currentTime); this.effects.phase.allpass2.frequency.setValueAtTime(freq*1.5, this.ctx.currentTime); } }
+  setPhaseLevel(v){
+    if(this.effects && this.effects.phase){
+      try{ this.effects.phase.wet.gain.setValueAtTime(v, this.ctx.currentTime); }catch(e){}
+      // if experimental phaser exists, apply wet there as well
+      try{ if(this.effects.phase.experimental) this.effects.phase.experimental.wet.gain.setValueAtTime(v, this.ctx.currentTime); }catch(e){}
+    }
+  }
+
+  setPhaseWidth(w){
+    if(this.effects && this.effects.phase){
+      const pan = (w*2 - 1);
+      try{ this.effects.phase.panner.pan.setValueAtTime(pan, this.ctx.currentTime); }catch(e){}
+      const now = this.ctx.currentTime;
+      const base = 300 + w * 1700; // map width to base freq
+      const depth = 50 + w * 600;
+      const fb = 0.15 + w * 0.6;
+      try{ if(this.effects.phase.allpass1) this.effects.phase.allpass1.frequency.setValueAtTime(base, now); }catch(e){}
+      try{ if(this.effects.phase.allpass2) this.effects.phase.allpass2.frequency.setValueAtTime(base*1.5, now); }catch(e){}
+      // apply to experimental phaser if present
+      try{ if(this.effects.phase.experimental){ for(let i=0;i<this.effects.phase.experimental.allpasses.length;i++){ const ap = this.effects.phase.experimental.allpasses[i]; const stageFreq = base * (1 + i * 0.18); try{ ap.frequency.setValueAtTime(stageFreq, now); }catch(e){} } }
+      }catch(e){}
+      try{ if(this.effects.phase.experimental && this.effects.phase.experimental.lfoGain) this.effects.phase.experimental.lfoGain.gain.setValueAtTime(depth, now); }catch(e){}
+      try{ if(this.effects.phase.experimental && this.effects.phase.experimental.feedback) this.effects.phase.experimental.feedback.gain.setValueAtTime(Math.min(0.95, fb), now); }catch(e){}
+    }
+  }
 
   // Delay control
   setDelayLevel(v){ if(this.effects && this.effects.delay) this.effects.delay.wet.gain.setValueAtTime(v, this.ctx.currentTime); }
@@ -563,7 +636,7 @@ class Synth {
     document.getElementById('osc_mix').addEventListener('input',(e)=>{ this.controls.mix = parseFloat(e.target.value); this._updateAllVoicesLevels(); });
 
     // LFO
-    document.getElementById('lfo_rate').addEventListener('input',(e)=>{ this.controls.lfo.rate = parseFloat(e.target.value); this.lfo.frequency.value = this.controls.lfo.rate; });
+    document.getElementById('lfo_rate').addEventListener('input',(e)=>{ this.controls.lfo.rate = parseFloat(e.target.value); this.lfo.frequency.value = this.controls.lfo.rate; try{ if(this.effects && this.effects.phase && this.effects.phase.experimental && this.effects.phase.experimental.lfo){ this.effects.phase.experimental.lfo.frequency.setValueAtTime(this.controls.lfo.rate, this.ctx.currentTime); } }catch(ex){} });
     document.getElementById('lfo_depth').addEventListener('input',(e)=>{ this.controls.lfo.depth = parseFloat(e.target.value); this._updateLFODepth(); });
     document.querySelectorAll('.lfo_target').forEach(cb=>{
       cb.addEventListener('change',(e)=>{ this.setLfoTarget(cb.value, cb.checked); });
@@ -783,6 +856,9 @@ class Synth {
 
     // cleanup auto scale intervals
     try{ if(this._oscAutoIntervals){ if(this._oscAutoIntervals.x) clearInterval(this._oscAutoIntervals.x); if(this._oscAutoIntervals.y) clearInterval(this._oscAutoIntervals.y); delete this._oscAutoIntervals; } }catch(e){}
+
+    // cleanup experimental phaser if present
+    try{ if(this.effects && this.effects.phase && this.effects.phase.experimental){ try{ if(this.effects.phase.experimental.lfo) this.effects.phase.experimental.lfo.stop(); }catch(e){} try{ if(this.effects.phase.experimental.lfoGain) this.effects.phase.experimental.lfoGain.disconnect(); }catch(e){} try{ if(this.effects.phase.experimental.feedback) this.effects.phase.experimental.feedback.disconnect(); }catch(e){} } }catch(e){}
 
     // close audio context
     try{ if(this.ctx && typeof this.ctx.close === 'function'){ this.ctx.close().catch(()=>{}); } }catch(e){}
