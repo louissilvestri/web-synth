@@ -1,0 +1,122 @@
+:root{--bg:#00120a;--panel:#04130b;--accent:#7CFF6B;--muted:#3bd17b;--phosphor:#7CFF6B; --box-osc-h:154px; --box-lfo-h:220px; --box-effects-h:320px} 
+*{box-sizing:border-box;font-family:'Press Start 2P', 'Courier New', monospace}
+html,body{height:100%;margin:0;background:radial-gradient(circle at 10% 10%, #081612, var(--bg) 40%), repeating-linear-gradient(transparent, rgba(0,0,0,0.03) 1px, transparent 2px);color:var(--phosphor)}
+body.retro{font-size:0.55rem}
+.synth{max-width:1100px;margin:24px auto;padding:16px;box-shadow:0 0 40px rgba(0,255,120,0.03) inset}
+header{display:flex;align-items:center;justify-content:space-between}
+h1{margin:0;font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--phosphor);text-shadow:0 0 8px rgba(124,255,107,0.9), 0 0 20px rgba(124,255,107,0.15)}
+.controls-row{display:flex;gap:12px;align-items:center}
+.panel{background:linear-gradient(180deg, rgba(0,20,0,0.6), rgba(0,10,0,0.8));border:1px solid rgba(124,255,107,0.06);box-shadow:0 6px 30px rgba(0,0,0,0.6);border-radius:8px;padding:12px;margin-top:12px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:18px;align-items:start} 
+.box{background:transparent;padding:10px;border-radius:6px;border:1px solid rgba(124,255,107,0.04);min-height:88px}
+.box.performance{grid-column:1/-1;padding:12px}
+.box.osc-box,.box.filter-box,.box.adsr-box{min-width:160px}
+ /* Heights: make osc & mix match LFO, ADSR match effects (fixed/static heights) */
+.box.osc-box{height:var(--box-lfo-h);box-sizing:border-box;overflow:hidden}
+.box.mix-box{height:var(--box-lfo-h);box-sizing:border-box;overflow:hidden}
+.box.lfo-box{min-width:260px;grid-column:span 2;padding:14px;height:var(--box-lfo-h);box-sizing:border-box;overflow:auto}
+ .box.filter-box{height:var(--box-lfo-h);box-sizing:border-box;overflow:hidden}
+.box.effects-box{min-width:220px;height:375px;box-sizing:border-box;overflow:auto}
+ .box.adsr-box{height:375px;box-sizing:border-box;overflow:auto}
+label{display:block;margin:6px 0;font-size:0.48rem;color:var(--phosphor)}
+.effect{min-width:100px;display:flex;flex-direction:column;gap:6px;align-items:center}
+/* Make effects distribute extra horizontal space so there is no blank gap at the box edge */
+.box.effects-box .controls-grid .effect{flex:1 1 100px}
+.box .controls-grid{display:flex;gap:12px;align-items:flex-end;flex-wrap:nowrap}
+.box .controls-grid .control{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:48px}
+/* Align detune/level controls to top for oscillator boxes */
+/* Use grid layout for clean column alignment so labels line up with sliders */
+.box.osc-box .controls-grid{display:grid;grid-template-columns:1fr 120px 120px;align-items:start;gap:9px}
+.box.osc-box .controls-grid .control{align-items:flex-start}
+
+/* Filter controls: ensure columns align for type, cutoff, Q, EnvAmt (LFO-style compact sliders) */
+.box.filter-box .controls-grid{display:grid;grid-template-columns:1fr 60px 60px 60px;align-items:flex-end;gap:12px}
+.box.filter-box .controls-grid .control{align-items:flex-end;justify-self:center}
+.box.filter-box .controls-grid .control .slider-wrap{height:80px;display:flex;align-items:center;justify-content:center;margin:0;padding:3px} 
+
+/* Align ADSR controls to top and tighten spacing; center controls so sliders line up under labels */
+.box.adsr-box .controls-grid{display:flex;gap:12px;align-items:flex-start;padding:0 6px;justify-content:space-between}
+/* Make each ADSR control flexible and evenly distributed across the ADSR box */
+.box.adsr-box .controls-grid .control{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:12px;height:292px;flex:1 1 0;padding:0;box-sizing:border-box;max-width:292px}
+.box.adsr-box .controls-grid .control .slider-wrap{margin:0;padding:0;justify-content:center;overflow:visible;height:292px;width:100%;display:flex;align-items:center;justify-content:center}
+
+.box.adsr-box label{margin:4px 0 6px 0;text-align:center;width:100%}
+.targets-grid{display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:7px}
+.lfo-targets{display:flex;flex-direction:column;gap:5px;margin-top:6px}
+.lfo-targets span{font-size:0.42rem;margin-bottom:4px}
+.lfo-targets label{display:flex;align-items:center;gap:5px;font-size:0.48rem;color:var(--phosphor)} 
+.targets-grid .led{font-size:0.48rem;white-space:normal;word-break:normal}
+/* LED checkbox style */
+label.led{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:6px}
+label.led input[type=checkbox]{display:none}
+label.led .led-indicator{display:inline-block;flex:0 0 12px;min-width:12px;min-height:12px;width:12px;height:12px;aspect-ratio:1/1;border-radius:50%;background:#220000;box-shadow:inset 0 -2px 3px rgba(0,0,0,0.6)}
+label.led input[type=checkbox]:checked + .led-indicator{background:#ff3b3b;box-shadow:0 0 8px rgba(255,59,59,0.9), inset 0 2px 6px rgba(255,180,180,0.25)}
+/* Choice group layout */
+.choice-group{display:flex;flex-direction:column;gap:5px}
+.choice-group .led{font-size:0.48rem}
+.choice-group.horizontal{flex-direction:row}
+.choice-group.horizontal .led{margin-right:7px} 
+/* Left-align waveform and filter choice groups while keeping other groups centered */
+.control.choice-group, .choice-group.control{align-items:flex-start}
+/* Ensure the Filter choice group is aligned to the left of its cell */
+.box.filter-box .choice-group.control{justify-self:start;align-items:flex-start}
+.box.osc-box .choice-group .led, .box.filter-box .choice-group .led{justify-content:flex-start;width:auto;text-align:left;padding-left:6px}
+
+/* Seven-seg style for polyphony display */
+.poly-control{display:flex;flex-direction:column;align-items:center;gap:5px}
+.poly-ui{display:flex;align-items:center;gap:7px}
+.poly-display{display:flex;gap:5px} 
+.sevenseg{position:relative;width:38px;height:64px;background:#110000;border:1px solid rgba(255,50,50,0.08);border-radius:4px;padding:6px;box-shadow:0 0 6px rgba(255,50,50,0.08) inset}
+.sevenseg .seg{position:absolute;background:rgba(255,80,80,0.06);transition:background 0.08s, box-shadow 0.08s}
+.sevenseg .seg.on{background:#ff3b3b;box-shadow:0 0 8px rgba(255,59,59,0.9), inset 0 2px 6px rgba(255,180,180,0.25)}
+/* segment positions */
+.sevenseg .a{top:4px;left:8px;right:8px;height:6px;border-radius:3px}
+.sevenseg .d{bottom:4px;left:8px;right:8px;height:6px;border-radius:3px}
+.sevenseg .g{top:29px;left:8px;right:8px;height:6px;border-radius:3px}
+.sevenseg .f{top:8px;left:4px;width:6px;height:22px;border-radius:3px}
+.sevenseg .b{top:8px;right:4px;width:6px;height:22px;border-radius:3px}
+.sevenseg .e{top:36px;left:4px;width:6px;height:22px;border-radius:3px}
+.sevenseg .c{top:36px;right:4px;width:6px;height:22px;border-radius:3px}
+
+/* small LED buttons for up/down, stacked vertically and green */
+.poly-buttons{display:flex;flex-direction:column;gap:6px}
+.led-btn{width:18px;height:18px;border-radius:50%;background:#022200;border:1px solid rgba(50,255,100,0.06);color:#9bffb1;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0;cursor:pointer}
+.led-btn.green:hover{box-shadow:0 0 8px rgba(50,255,150,0.6)}
+.led-btn.green:active{background:#3bff7b;box-shadow:0 0 8px rgba(59,255,123,0.9), inset 0 2px 6px rgba(150,255,200,0.25)}
+
+/* VU meter */
+.master-control{display:flex;align-items:center;gap:10px}
+.vu-meter{display:flex;flex-direction:column-reverse;gap:5px;margin-left:10px;padding-left:6px;align-items:center;justify-content:center;height:64px} 
+.vu-led{width:14px;height:10px;border-radius:3px;background:#082208;box-shadow:inset 0 -2px 4px rgba(0,0,0,0.6)}
+.vu-led.on.green{background:#3bff7b;box-shadow:0 0 8px rgba(59,255,123,0.8)}
+.vu-led.on.yellow{background:#ffd24d;box-shadow:0 0 8px rgba(255,210,77,0.8)}
+.vu-led.on.red{background:#ff3b3b;box-shadow:0 0 8px rgba(255,59,59,0.9)}
+
+/* Vertical slider styling (shorter and interactive) */
+.slider-wrap{height:80px;display:flex;align-items:center;justify-content:center;padding:2px}
+/* Longer sliders for Osc A/B and Mix (50% longer) */ 
+.box.osc-box .slider-wrap, .box.mix-box .slider-wrap{height:120px}
+.box.osc-box input[type=range], .box.mix-box input[type=range]{-webkit-appearance:none;appearance:none;width:90px;height:12px;transform:rotate(-90deg);transform-origin:center center;display:inline-block;margin:0 5px;outline:none;background:transparent}
+/* ADSR sliders: doubled length */
+.box.adsr-box .slider-wrap{height:320px;display:flex;align-items:center;justify-content:center;overflow:visible;padding:0} 
+.box.adsr-box input[type=range]{-webkit-appearance:none;appearance:none;width:292px !important;max-width:292px;height:12px;transform:rotate(-90deg);transform-origin:center center;display:block;margin:0;outline:none;background:transparent;box-sizing:content-box;overflow:visible}  
+input[type=range]{-webkit-appearance:none;appearance:none;width:60px;height:12px;transform:rotate(-90deg);transform-origin:center center;display:inline-block;margin:0 5px;outline:none;background:transparent} 
+input[type=range]::-webkit-slider-runnable-track{height:6px;background:rgba(124,255,107,0.08);border-radius:4px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--phosphor);box-shadow:0 0 8px rgba(124,255,107,0.9)}
+input[type=range]:focus::-webkit-slider-runnable-track{background:rgba(124,255,107,0.12)}
+/* Firefox */
+input[type=range]::-moz-range-track{height:6px;background:rgba(124,255,107,0.08);border-radius:4px}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--phosphor);box-shadow:0 0 8px rgba(124,255,107,0.9)}
+select{width:100%;padding:6px;border-radius:4px;background:transparent;color:var(--phosphor);border:1px solid rgba(124,255,107,0.06)}
+.keyboard{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.key{width:34px;height:110px;border-radius:4px;background:transparent;border:1px solid rgba(124,255,107,0.06);display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;color:var(--phosphor);font-weight:600;box-shadow:0 0 6px rgba(124,255,107,0.04) inset}
+.key{font-size:0.6rem}
+.key.black{background:#00240f;height:70px;width:24px;margin-left:-12px;margin-right:-12px;z-index:2;color:var(--phosphor)}
+footer{margin-top:12px;color:var(--muted)}
+@media (max-width:900px){
+  .box.adsr-box{height:var(--box-effects-h)}
+  .box.adsr-box .slider-wrap{height:195px}
+  .box.adsr-box input[type=range]{width:92%}
+}
+@media (max-width:800px){.grid{grid-template-columns:1fr}.key{width:28px;height:90px}}
+/* Removed duplicate LFO styles that conflicted with target sizing */

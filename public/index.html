@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Web Synth — Subtractive Analog</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body class="retro">
+  <main class="synth">
+    <header>
+      <h1>Web Synth — Subtractive Analog</h1>
+      <div class="controls-row">
+        <label class="master-control">Master <span class="slider-wrap"><input id="masterGain" type="range" min="0" max="1" step="0.01" value="0.8"></span><div id="vu_meter" class="vu-meter" aria-hidden="false">
+            <div class="vu-led" data-level="1"></div>
+            <div class="vu-led" data-level="2"></div>
+            <div class="vu-led" data-level="3"></div>
+            <div class="vu-led" data-level="4"></div>
+            <div class="vu-led" data-level="5"></div>
+            <div class="vu-led" data-level="6"></div>
+          </div></label>
+        <div class="poly-control">
+          <span class="poly-label">Polyphony</span>
+          <div class="poly-ui">
+            <div id="poly_display" class="poly-display" aria-live="polite">
+              <div class="sevenseg digit" data-digit="0">
+                <div class="seg a"></div>
+                <div class="seg b"></div>
+                <div class="seg c"></div>
+                <div class="seg d"></div>
+                <div class="seg e"></div>
+                <div class="seg f"></div>
+                <div class="seg g"></div>
+              </div>
+            </div>
+            <div class="poly-buttons">
+              <button id="poly_up" class="led-btn green" aria-label="Increase polyphony">▲</button>
+              <button id="poly_down" class="led-btn green" aria-label="Decrease polyphony">▼</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="panel">
+      <h2>Oscillators</h2>
+      <div class="grid">
+        <div class="box osc-box">
+          <h3>Osc A</h3>
+          <div class="controls-grid">
+            <div class="choice-group control" data-group="oscA_wave">
+              <label class="led"><input type="checkbox" class="led-checkbox single-choice" data-group="oscA_wave" value="sawtooth" checked><span class="led-indicator"></span>Saw</label>
+              <label class="led"><input type="checkbox" class="led-checkbox single-choice" data-group="oscA_wave" value="square"><span class="led-indicator"></span>Square</label>
+              <label class="led"><input type="checkbox" class="led-checkbox single-choice" data-group="oscA_wave" value="triangle"><span class="led-indicator"></span>Triangle</label>
+              <label class="led"><input type="checkbox" class="led-checkbox single-choice" data-group="oscA_wave" value="sine"><span class="led-indicator"></span>Sine</label>
+            </div>
+            <label class="control">Detune <span class="slider-wrap"><input id="oscA_detune" type="range" min="-50" max="50" value="0"></span></label>
+            <label class="control">Level <span class="slider-wrap"><input id="oscA_level" type="range" min="0" max="1" step="0.01" value="0.8"></span></label>
+          </div>
+        </div>
+
+        <div class="box osc-box">
+          <h3>Osc B</h3>
+          <div class="controls-grid">
+            <div class="choice-group control" data-group="oscB_wave">
+              <label class="led"><input type="checkbox" class="led-checkbox single-choice" data-group="oscB_wave" value="sawtooth" checked><span class="led-indicator"></span>Saw</label>
+              <label class="led"><input type="checkbox" class="led-checkbox single-choice" data-group="oscB_wave" value="square"><span class="led-indicator"></span>Square</label>
+              <label class="led"><input type="checkbox" class="led-checkbox single-choice" data-group="oscB_wave" value="triangle"><span class="led-indicator"></span>Triangle</label>
+              <label class="led"><input type="checkbox" class="led-checkbox single-choice" data-group="oscB_wave" value="sine"><span class="led-indicator"></span>Sine</label>
+            </div>
+            <label class="control">Detune <span class="slider-wrap"><input id="oscB_detune" type="range" min="-50" max="50" value="0"></span></label>
+            <label class="control">Level <span class="slider-wrap"><input id="oscB_level" type="range" min="0" max="1" step="0.01" value="0.6"></span></label>
+          </div>
+        </div>
+
+        <div class="box mix-box">
+          <h3>Mix</h3>
+          <div class="controls-grid">
+            <label class="control">Osc A / B <span class="slider-wrap"><input id="osc_mix" type="range" min="0" max="1" step="0.01" value="0.5"></span></label>
+            <label class="control">Noise <span class="slider-wrap"><input id="noise_level" type="range" min="0" max="1" step="0.01" value="0"></span></label>
+          </div>
+        </div>
+
+        <div class="box lfo-box">
+          <h3>LFO</h3>
+          <div class="controls-grid">
+            <label class="control">Rate <span class="slider-wrap"><input id="lfo_rate" type="range" min="0.01" max="20" step="0.01" value="5"></span></label>
+            <label class="control">Depth <span class="slider-wrap"><input id="lfo_depth" type="range" min="0" max="100" step="1" value="0"></span></label>
+            <div class="lfo-targets control">
+              <span>Targets</span>
+              <div class="targets-grid">
+                <label class="led"><input type="checkbox" class="lfo_target led-checkbox" value="oscA_pitch"><span class="led-indicator"></span>OSC A Pitch</label>
+                <label class="led"><input type="checkbox" class="lfo_target led-checkbox" value="oscA_detune"><span class="led-indicator"></span>OSC A Detune</label>
+                <label class="led"><input type="checkbox" class="lfo_target led-checkbox" value="oscA_level"><span class="led-indicator"></span>OSC A Level</label>
+                <label class="led"><input type="checkbox" class="lfo_target led-checkbox" value="oscB_pitch"><span class="led-indicator"></span>OSC B Pitch</label>
+                <label class="led"><input type="checkbox" class="lfo_target led-checkbox" value="oscB_detune"><span class="led-indicator"></span>OSC B Detune</label>
+                <label class="led"><input type="checkbox" class="lfo_target led-checkbox" value="oscB_level"><span class="led-indicator"></span>OSC B Level</label>
+                <label class="led"><input type="checkbox" class="lfo_target led-checkbox" value="filter_cutoff"><span class="led-indicator"></span>Filter Cutoff</label>
+                <label class="led"><input type="checkbox" class="lfo_target led-checkbox" value="filter_q"><span class="led-indicator"></span>Filter Q</label>
+                <label class="led"><input type="checkbox" class="lfo_target led-checkbox" value="mix"><span class="led-indicator"></span>OSC A/B Mix</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="box filter-box">
+          <h3>Filter</h3>
+          <div class="controls-grid">
+            <div class="choice-group control" data-group="filter_type">
+              <label class="led"><input type="checkbox" class="led-checkbox single-choice" data-group="filter_type" value="lowpass" checked><span class="led-indicator"></span>Lowpass</label>
+              <label class="led"><input type="checkbox" class="led-checkbox single-choice" data-group="filter_type" value="highpass"><span class="led-indicator"></span>Highpass</label>
+              <label class="led"><input type="checkbox" class="led-checkbox single-choice" data-group="filter_type" value="bandpass"><span class="led-indicator"></span>Bandpass</label>
+            </div>
+            <label class="control">Cutoff <span class="slider-wrap"><input id="filter_cutoff" type="range" min="20" max="20000" step="1" value="1500"></span></label>
+            <label class="control">Q <span class="slider-wrap"><input id="filter_q" type="range" min="0.1" max="20" step="0.1" value="1"></span></label>
+            <label class="control">Env Amt <span class="slider-wrap"><input id="filter_env_amt" type="range" min="-20000" max="20000" step="1" value="0"></span></label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Filter &amp; Envelope</h2>
+      <div class="grid">
+        <div class="box adsr-box">
+          <h3>AMP ADSR</h3>
+          <div class="controls-grid">
+            <label class="control">A <span class="slider-wrap"><input id="amp_a" type="range" min="0" max="2" step="0.001" value="0.01"></span></label>
+            <label class="control">D <span class="slider-wrap"><input id="amp_d" type="range" min="0" max="2" step="0.001" value="0.2"></span></label>
+            <label class="control">S <span class="slider-wrap"><input id="amp_s" type="range" min="0" max="1" step="0.01" value="0.8"></span></label>
+            <label class="control">R <span class="slider-wrap"><input id="amp_r" type="range" min="0" max="5" step="0.01" value="0.5"></span></label>
+          </div>
+        </div>
+
+        <div class="box adsr-box">
+          <h3>Filter ADSR</h3>
+          <div class="controls-grid">
+            <label class="control">A <span class="slider-wrap"><input id="f_a" type="range" min="0" max="2" step="0.001" value="0.01"></span></label>
+            <label class="control">D <span class="slider-wrap"><input id="f_d" type="range" min="0" max="2" step="0.001" value="0.2"></span></label>
+            <label class="control">S <span class="slider-wrap"><input id="f_s" type="range" min="0" max="1" step="0.01" value="0.8"></span></label>
+            <label class="control">R <span class="slider-wrap"><input id="f_r" type="range" min="0" max="5" step="0.01" value="0.5"></span></label>
+          </div>
+        </div>
+
+        <div class="box effects-box">
+          <h3>Effects</h3>
+          <div class="controls-grid">
+            <div class="effect control">
+              <strong>Phase</strong>
+              <label>Level <span class="slider-wrap"><input id="phase_level" type="range" min="0" max="1" step="0.01" value="0"></span></label>
+              <label>Width <span class="slider-wrap"><input id="phase_width" type="range" min="0" max="1" step="0.01" value="0.5"></span></label>
+            </div>
+
+            <div class="effect control">
+              <strong>Delay</strong>
+              <label>Level <span class="slider-wrap"><input id="delay_level" type="range" min="0" max="1" step="0.01" value="0"></span></label>
+              <label>Rate <span class="slider-wrap"><input id="delay_rate" type="range" min="0" max="1" step="0.01" value="0.3"></span></label>
+            </div>
+
+            <div class="effect control">
+              <strong>Chorus</strong>
+              <label>Level <span class="slider-wrap"><input id="chorus_level" type="range" min="0" max="1" step="0.01" value="0"></span></label>
+              <label>Voices <span class="slider-wrap"><input id="chorus_voices" type="range" min="1" max="4" step="1" value="2"></span></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="box performance">
+          <h3>Performance</h3>
+          <p>Use your computer keyboard to play (Z..M rows). Click to focus.</p>
+          <div id="keyboard" class="keyboard"></div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <small>Built with Web Audio API • Node.js static server</small>
+    </footer>
+  </main>
+
+  <script src="synth.js"></script>
+</body>
+</html>

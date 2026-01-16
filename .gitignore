@@ -1,0 +1,24 @@
+# Node
+node_modules/
+
+# Environment
+.env
+.env.*
+
+# Logs
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.vscode/
+.idea/
+
+# Build / output
+dist/
+coverage/
+
+# MacOS
+*.DS_Store
