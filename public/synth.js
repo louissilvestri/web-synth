@@ -143,6 +143,22 @@ class Synth {
       const draw = ()=>{
         if(!this._oscRunning) return;
         this.analyser.getByteTimeDomainData(this._oscBuf);
+        const now = performance.now();
+
+        // Auto-scaling in draw loop (responsive + throttled)
+        try{
+          if(this._oscAutoEnabled && this._oscAutoEnabled.y){
+            // update Y every frame for immediacy
+            let max = 0;
+            for(let i=0;i<this._oscBuf.length;i++){ const v = Math.abs((this._oscBuf[i]-128)/128); if(v>max) max = v; }
+            if(max < 1e-4) this._oscZoomY = 1; else this._oscZoomY = Math.max(0.25, Math.min(32, (1 / max) * 0.9));
+          }
+          if(this._oscAutoEnabled && this._oscAutoEnabled.x){
+            // throttle X auto to ~350ms
+            if(!this._lastAutoX || (now - this._lastAutoX) > 350){ this._autoScaleX(); this._lastAutoX = now; }
+          }
+        }catch(e){}
+
         const dpr = window.devicePixelRatio || 1;
         const W = Math.max(1, Math.floor(canvas.clientWidth * dpr));
         const H = Math.max(1, Math.floor(canvas.clientHeight * dpr));
@@ -419,6 +435,16 @@ class Synth {
       this._oscZoomDelegatedClick = (e)=>{ const btn = e.target.closest && e.target.closest('.osc-zoom-btn'); if(!btn) return; e.preventDefault(); e.stopPropagation(); btn.classList.add('pressed'); btn.setAttribute('aria-pressed','true'); this._changeOscZoom(btn.dataset.axis, btn.dataset.zoom); setTimeout(()=>{ btn.classList.remove('pressed'); btn.setAttribute('aria-pressed','false'); }, 140); };
       document.addEventListener('click', this._oscZoomDelegatedClick);
 
+        // Auto-scaling toggles: set flags, actual work happens in draw loop (throttled)
+      try{
+        this._oscAutoEnabled = { x: false, y: false };
+        this._lastAutoX = 0; this._lastAutoY = 0;
+        const autoX = document.getElementById('osc_auto_x');
+        const autoY = document.getElementById('osc_auto_y');
+        if(autoX){ autoX.addEventListener('change',(e)=>{ this._oscAutoEnabled.x = !!e.target.checked; if(this._oscAutoEnabled.x) this._autoScaleX(); }); }
+        if(autoY){ autoY.addEventListener('change',(e)=>{ this._oscAutoEnabled.y = !!e.target.checked; if(this._oscAutoEnabled.y) this._autoScaleY(); }); }
+      }catch(e){}
+
     }catch(e){/* ignore */}
   }
 
@@ -668,10 +694,13 @@ class Synth {
       await this._requestMIDI();
     });
     if(sel){ sel.addEventListener('change', (e)=>{
-      const id = e.target.value; if(!this.midi || !this.midi.access) return; // detach previous
+      const id = e.target.value; if(!this.midi || !this.midi.access) return;
+      // detach previous
       if(this.midi.input && typeof this.midi.input.onmidimessage === 'function') this.midi.input.onmidimessage = null;
+      // if user selected 'none' (empty string), clear selection
+      if(!id){ this.midi.input = null; const status = document.getElementById('midi_status'); if(status) status.textContent = 'None'; return; }
       const input = this.midi.access.inputs.get(id);
-      if(input){ this.midi.input = input; input.onmidimessage = (ev)=> this._onMIDIMessage(ev); }
+      if(input){ this.midi.input = input; input.onmidimessage = (ev)=> this._onMIDIMessage(ev); const status = document.getElementById('midi_status'); if(status) status.textContent = ''; }
     }); }
   }
 
@@ -684,8 +713,9 @@ class Synth {
       access.onstatechange = ()=> this._updateMIDIDevices();
       // auto-select first input if available
       const it = access.inputs.values().next();
-      if(!it.done){ const first = it.value; this.midi.input = first; first.onmidimessage = (ev)=> this._onMIDIMessage(ev); const status = document.getElementById('midi_status'); if(status) status.textContent = 'Connected: ' + first.name; const sel = document.getElementById('midi_inputs'); if(sel){ sel.value = first.id; sel.style.display = ''; } }
-      else { const status = document.getElementById('midi_status'); if(status) status.textContent = 'No MIDI inputs'; const sel = document.getElementById('midi_inputs'); if(sel) sel.style.display = 'none'; }
+      const sel = document.getElementById('midi_inputs');
+      if(!it.done){ const first = it.value; this.midi.input = first; first.onmidimessage = (ev)=> this._onMIDIMessage(ev); const status = document.getElementById('midi_status'); if(status) status.textContent = ''; if(sel){ sel.value = first.id; sel.style.display = ''; } }
+      else { const status = document.getElementById('midi_status'); if(status) status.textContent = 'None'; if(sel) sel.style.display = ''; }
     }catch(e){ const status = document.getElementById('midi_status'); if(status) status.textContent = 'Permission denied'; }
   }
 
@@ -693,12 +723,16 @@ class Synth {
     if(!this.midi || !this.midi.access) return;
     const sel = document.getElementById('midi_inputs');
     if(!sel) return;
-    // clear
+    // clear and add explicit 'None' option
     sel.innerHTML = '';
+    const none = document.createElement('option'); none.value = ''; none.textContent = 'None'; sel.appendChild(none);
     for(const input of this.midi.access.inputs.values()){
       const opt = document.createElement('option'); opt.value = input.id; opt.textContent = input.name || input.manufacturer || input.id; sel.appendChild(opt);
     }
-    if(this.midi.input){ sel.value = this.midi.input.id; sel.style.display = ''; const status = document.getElementById('midi_status'); if(status) status.textContent = 'Connected: ' + (this.midi.input.name || this.midi.input.id); }
+    sel.style.display = '';
+    const status = document.getElementById('midi_status');
+    if(this.midi.input){ sel.value = this.midi.input.id; if(status) status.textContent = (this.midi.input.name || this.midi.input.id); }
+    else { sel.value = ''; if(status) status.textContent = 'None'; }
   }
 
   _onMIDIMessage(ev){
@@ -746,6 +780,9 @@ class Synth {
 
     // cleanup osc zoom delegated handler
     try{ if(this._oscZoomDelegatedClick) document.removeEventListener('click', this._oscZoomDelegatedClick); delete this._oscZoomDelegatedClick; }catch(e){}
+
+    // cleanup auto scale intervals
+    try{ if(this._oscAutoIntervals){ if(this._oscAutoIntervals.x) clearInterval(this._oscAutoIntervals.x); if(this._oscAutoIntervals.y) clearInterval(this._oscAutoIntervals.y); delete this._oscAutoIntervals; } }catch(e){}
 
     // close audio context
     try{ if(this.ctx && typeof this.ctx.close === 'function'){ this.ctx.close().catch(()=>{}); } }catch(e){}

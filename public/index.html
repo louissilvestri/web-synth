@@ -12,28 +12,36 @@
     <header>
       <h1>Web Synth — Subtractive Analog</h1>
       <div class="controls-row">
-        <label class="master-control">Master <span class="slider-wrap"><input id="masterGain" type="range" min="0" max="1" step="0.01" value="0.8"></span>
-          <div class="osc-wrap">
-            <div class="osc-zoom-x">
-              <button class="led-btn osc-zoom-btn" data-axis="y" data-zoom="in" aria-label="Zoom Y in">+</button>
-              <button class="led-btn osc-zoom-btn" data-axis="y" data-zoom="out" aria-label="Zoom Y out">−</button>
+        <label class="master-control">
+          <div class="master-label">Master</div>
+          <div class="master-inner">
+            <div id="vu_meter" class="vu-meter" aria-hidden="false">
+              <div class="vu-led" data-level="1"></div>
+              <div class="vu-led" data-level="2"></div>
+              <div class="vu-led" data-level="3"></div>
+              <div class="vu-led" data-level="4"></div>
+              <div class="vu-led" data-level="5"></div>
+              <div class="vu-led" data-level="6"></div>
             </div>
-            <div class="osc-canvas-wrap">
-              <canvas id="oscilloscope" class="oscilloscope" width="200" height="64" aria-hidden="true"></canvas>
-              <div class="osc-zoom-y">
-                <button class="led-btn osc-zoom-btn" data-axis="x" data-zoom="in" aria-label="Zoom X in">+</button>
-                <button class="led-btn osc-zoom-btn" data-axis="x" data-zoom="out" aria-label="Zoom X out">−</button>
-              </div>
+            <span class="slider-wrap"><input id="masterGain" type="range" min="0" max="1" step="0.01" value="0.8"></span>
+          </div>
+        </label>
+
+        <div class="osc-wrap">
+          <div class="osc-zoom-x">
+            <button class="led-btn osc-zoom-btn" data-axis="y" data-zoom="in" aria-label="Zoom Y in">+</button>
+            <button class="led-btn osc-zoom-btn" data-axis="y" data-zoom="out" aria-label="Zoom Y out">−</button>
+            <label class="led auto-label"><input id="osc_auto_y" type="checkbox"><span class="led-indicator"></span>Auto</label>
+          </div>
+          <div class="osc-canvas-wrap">
+            <canvas id="oscilloscope" class="oscilloscope" width="200" height="64" aria-hidden="true"></canvas>
+            <div class="osc-zoom-y">
+              <button class="led-btn osc-zoom-btn" data-axis="x" data-zoom="in" aria-label="Zoom X in">+</button>
+              <button class="led-btn osc-zoom-btn" data-axis="x" data-zoom="out" aria-label="Zoom X out">−</button>
+              <label class="led auto-label"><input id="osc_auto_x" type="checkbox"><span class="led-indicator"></span>Auto</label>
             </div>
           </div>
-          <div id="vu_meter" class="vu-meter" aria-hidden="false">
-            <div class="vu-led" data-level="1"></div>
-            <div class="vu-led" data-level="2"></div>
-            <div class="vu-led" data-level="3"></div>
-            <div class="vu-led" data-level="4"></div>
-            <div class="vu-led" data-level="5"></div>
-            <div class="vu-led" data-level="6"></div>
-          </div></label>
+        </div>
         <div class="poly-control">
           <span class="poly-label">Polyphony</span>
           <div class="poly-ui">
@@ -58,7 +66,7 @@
         <div class="midi-control">
           <button id="midi_enable" class="led-btn" aria-label="Enable MIDI">MIDI</button>
           <select id="midi_inputs" aria-label="MIDI Inputs" style="display:none"></select>
-          <span id="midi_status" class="midi-status">No MIDI</span>
+          <span id="midi_status" class="midi-status">None</span>
         </div>
       </div>
     </header>

@@ -5,7 +5,8 @@ body.retro{font-size:0.55rem}
 .synth{max-width:1100px;margin:24px auto;padding:16px;box-shadow:0 0 40px rgba(0,255,120,0.03) inset}
 header{display:flex;align-items:center;justify-content:space-between}
 h1{margin:0;font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--phosphor);text-shadow:0 0 8px rgba(124,255,107,0.9), 0 0 20px rgba(124,255,107,0.15)}
-.controls-row{display:flex;gap:12px;align-items:center}
+.controls-row{display:flex;gap:12px;align-items:center;align-items:flex-start}
+.osc-wrap{align-self:center}
 .panel{background:linear-gradient(180deg, rgba(0,20,0,0.6), rgba(0,10,0,0.8));border:1px solid rgba(124,255,107,0.06);box-shadow:0 6px 30px rgba(0,0,0,0.6);border-radius:8px;padding:12px;margin-top:12px}
 .grid{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:18px;align-items:start} 
 .box{background:transparent;padding:10px;border-radius:6px;border:1px solid rgba(124,255,107,0.04);min-height:88px}
@@ -85,7 +86,9 @@ label.led input[type=checkbox]:checked + .led-indicator{background:#ff3b3b;box-s
 .led-btn.green:active{background:#3bff7b;box-shadow:0 0 8px rgba(59,255,123,0.9), inset 0 2px 6px rgba(150,255,200,0.25)}
 
 /* VU meter */
-.master-control{display:flex;align-items:center;gap:10px}
+.master-control{display:flex;flex-direction:column;align-items:center;gap:6px}
+.master-control .master-inner{display:flex;align-items:center;gap:10px}
+.master-control .master-label{font-size:0.52rem;text-transform:uppercase;color:var(--phosphor);letter-spacing:1px}
 .oscilloscope{width:200px;height:64px;border-radius:6px;background:linear-gradient(90deg,#001a0f,#00120a);border:1px solid rgba(124,255,107,0.06);box-shadow:0 2px 8px rgba(0,0,0,0.45);margin-left:8px}
 .osc-wrap{display:flex;align-items:center;gap:8px;margin-left:8px}
 .osc-zoom-x{display:flex;flex-direction:column;gap:6px;align-items:center}
@@ -93,10 +96,11 @@ label.led input[type=checkbox]:checked + .led-indicator{background:#ff3b3b;box-s
 .osc-zoom-y{display:flex;gap:8px}
 .osc-zoom-btn{width:22px;height:22px;padding:0;font-size:0.8rem;border-radius:4px}
 .osc-zoom-btn.pressed{background:#3bff7b;color:#022200;box-shadow:0 0 8px rgba(59,255,123,0.9), inset 0 2px 6px rgba(150,255,200,0.25)}
+.auto-label{font-size:0.46rem;padding:4px 6px;border-radius:6px;margin-left:6px}
 
-.midi-control{display:flex;align-items:center;gap:8px;margin-left:8px}
-.midi-control .midi-status{font-size:0.42rem;color:var(--muted);padding-left:4px}
-.midi-control select{background:transparent;border:1px solid rgba(124,255,107,0.06);color:var(--phosphor);padding:4px;border-radius:4px}
+.midi-control{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-left:20px}
+.midi-control .midi-status{font-size:0.42rem;color:var(--muted);padding-left:0}
+.midi-control select{display:block;min-width:120px;background:transparent;border:1px solid rgba(124,255,107,0.06);color:var(--phosphor);padding:4px;border-radius:4px}
 .vu-meter{display:flex;flex-direction:column-reverse;gap:5px;margin-left:10px;padding-left:6px;align-items:center;justify-content:center;height:64px} 
 .vu-led{width:14px;height:10px;border-radius:3px;background:#082208;box-shadow:inset 0 -2px 4px rgba(0,0,0,0.6)}
 .vu-led.on.green{background:#3bff7b;box-shadow:0 0 8px rgba(59,255,123,0.8)}
