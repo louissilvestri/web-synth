@@ -12,7 +12,9 @@
     <header>
       <h1>Web Synth — Subtractive Analog</h1>
       <div class="controls-row">
-        <label class="master-control">Master <span class="slider-wrap"><input id="masterGain" type="range" min="0" max="1" step="0.01" value="0.8"></span><div id="vu_meter" class="vu-meter" aria-hidden="false">
+        <label class="master-control">Master <span class="slider-wrap"><input id="masterGain" type="range" min="0" max="1" step="0.01" value="0.8"></span>
+          <canvas id="oscilloscope" class="oscilloscope" width="200" height="64" aria-hidden="true"></canvas>
+          <div id="vu_meter" class="vu-meter" aria-hidden="false">
             <div class="vu-led" data-level="1"></div>
             <div class="vu-led" data-level="2"></div>
             <div class="vu-led" data-level="3"></div>
