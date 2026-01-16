@@ -129,6 +129,17 @@ class Synth {
       const ctx = canvas.getContext('2d');
       this._oscBuf = new Uint8Array(this.analyser.fftSize || 2048);
       this._oscRunning = true;
+
+      // bind zoom buttons (kept as a fallback in case UI already exists)
+      const zoomBtns = document.querySelectorAll('.osc-zoom-btn');
+      zoomBtns.forEach(b=>{ b.addEventListener('click', ()=>{ const axis = b.dataset.axis; const zm = b.dataset.zoom; this._changeOscZoom(axis, zm); }); });
+
+      // continuous press support: mouse down to zoom repeatedly
+      let _zoomInterval = null;
+      const down = (ev)=>{ const b = ev.currentTarget; const axis = b.dataset.axis; const zm = b.dataset.zoom; _zoomInterval = setInterval(()=> this._changeOscZoom(axis, zm), 120); };
+      const up = ()=>{ if(_zoomInterval){ clearInterval(_zoomInterval); _zoomInterval = null; } };
+      zoomBtns.forEach(b=>{ b.addEventListener('mousedown', down); b.addEventListener('mouseup', up); b.addEventListener('mouseleave', up); b.addEventListener('touchstart', down); b.addEventListener('touchend', up); });
+
       const draw = ()=>{
         if(!this._oscRunning) return;
         this.analyser.getByteTimeDomainData(this._oscBuf);
@@ -140,19 +151,41 @@ class Synth {
         // background subtle
         ctx.fillStyle = 'rgba(0,0,0,0)';
         ctx.fillRect(0,0,canvas.width,canvas.height);
-        // draw waveform
+
+        // determine visible window based on horizontal zoom
+        const bufLen = this._oscBuf.length;
+        let zoomX = Number(this._oscZoomX);
+        if(!isFinite(zoomX) || zoomX <= 0) zoomX = 1;
+        zoomX = Math.max(0.25, zoomX);
+        const winLen = Math.max(4, Math.floor(bufLen / zoomX));
+        const start = Math.max(0, Math.floor((bufLen - winLen) / 2));
+
+        // draw waveform using windowed samples mapped to pixel columns
         ctx.lineWidth = 2 * dpr;
         ctx.strokeStyle = '#7CFF6B';
         ctx.beginPath();
         const centerY = canvas.height / 2;
-        const slice = canvas.width / this._oscBuf.length;
-        for(let i=0;i<this._oscBuf.length;i++){
-          const v = (this._oscBuf[i] - 128) / 128; // -1..1
-          const x = i * slice;
-          const y = centerY + v * centerY * 0.95;
-          if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        let ampScale = Number(this._oscZoomY);
+        if(!isFinite(ampScale) || ampScale <= 0) ampScale = 1;
+        ampScale = Math.max(0.25, ampScale);
+        const samplesPerPixel = winLen / Math.max(1, canvas.width);
+        for(let x=0;x<canvas.width;x++){
+          const idx = Math.min(bufLen-1, Math.floor(start + x * samplesPerPixel));
+          const sample = this._oscBuf[idx] || 128;
+          const v = (sample - 128) / 128; // -1..1
+          const y = centerY + v * centerY * 0.95 * ampScale;
+          if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
         }
         ctx.stroke();
+
+        // draw zoom readout
+        try{
+          ctx.fillStyle = 'rgba(124,255,107,0.9)';
+          ctx.font = `${12 * dpr}px monospace`;
+          const zx = (this._oscZoomX || 1).toFixed(2); const zy = (this._oscZoomY || 1).toFixed(2);
+          ctx.fillText(`X:${zx} Y:${zy}`, 4 * dpr, 12 * dpr);
+        }catch(e){}
+
         this._oscRafId = requestAnimationFrame(draw);
       };
       this._oscRafId = requestAnimationFrame(draw);
@@ -348,6 +381,47 @@ class Synth {
     }
   }
 
+  _changeOscZoom(axis, dir){
+    // axis: 'x'|'y', dir: 'in'|'out' — use small additive steps for momentary presses
+    const delta = 0.1;
+
+    let curX = Number(this._oscZoomX); if(!isFinite(curX)) curX = 1;
+    let curY = Number(this._oscZoomY); if(!isFinite(curY)) curY = 1;
+
+    if(axis === 'x'){
+      curX += (dir === 'in' ? delta : -delta);
+      curX = Math.max(0.25, Math.min(32, curX));
+    } else {
+      curY += (dir === 'in' ? delta : -delta);
+      curY = Math.max(0.25, Math.min(32, curY));
+    }
+
+    // commit sanitized values
+    this._oscZoomX = curX;
+    this._oscZoomY = curY;
+
+    // visual feedback: update readout and canvas data attribute
+    try{
+      const c = document.getElementById('oscilloscope'); if(c) c.setAttribute('data-zoom', `x:${curX.toFixed(2)} y:${curY.toFixed(2)}`);
+    }catch(e){}
+  }
+
+  _bindOscZoomControls(){
+    try{
+      const zoomBtns = document.querySelectorAll('.osc-zoom-btn');
+      if(!zoomBtns || zoomBtns.length === 0) return;
+      // single click (per-button handlers) — momentary single-step change
+      zoomBtns.forEach(b=>{ b.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); b.classList.add('pressed'); b.setAttribute('aria-pressed','true'); const axis = b.dataset.axis; const zm = b.dataset.zoom; this._changeOscZoom(axis, zm); setTimeout(()=>{ b.classList.remove('pressed'); b.setAttribute('aria-pressed','false'); }, 140); }); });
+
+      // remove continuous-press behavior: momentary only (no intervals)
+
+      // Delegated event as fallback in case per-button handlers miss (e.g., DOM changes)
+      this._oscZoomDelegatedClick = (e)=>{ const btn = e.target.closest && e.target.closest('.osc-zoom-btn'); if(!btn) return; e.preventDefault(); e.stopPropagation(); btn.classList.add('pressed'); btn.setAttribute('aria-pressed','true'); this._changeOscZoom(btn.dataset.axis, btn.dataset.zoom); setTimeout(()=>{ btn.classList.remove('pressed'); btn.setAttribute('aria-pressed','false'); }, 140); };
+      document.addEventListener('click', this._oscZoomDelegatedClick);
+
+    }catch(e){/* ignore */}
+  }
+
   setLfoTarget(target, enabled){
     if(enabled) this.lfoTargetsEnabled.add(target); else this.lfoTargetsEnabled.delete(target);
     // attach/detach for active voices
@@ -541,6 +615,8 @@ class Synth {
   _buildUI(){
     this.connectUIControls();
     this._buildKeyboard();
+    // bind oscilloscope zoom controls after UI is ready
+    this._bindOscZoomControls();
   }
 
   _buildKeyboard(){
@@ -576,6 +652,9 @@ class Synth {
 
     // bind MIDI controls (button/select)
     this._bindMIDIControls();
+
+    // bind osc zoom controls (ensures handlers added after dom construction)
+    this._bindOscZoomControls();
   }
 
   _bindMIDIControls(){
@@ -664,6 +743,9 @@ class Synth {
       if(this.midi && this.midi.access && typeof this.midi.access.onstatechange === 'function') this.midi.access.onstatechange = null;
       delete this.midi;
     }catch(e){}
+
+    // cleanup osc zoom delegated handler
+    try{ if(this._oscZoomDelegatedClick) document.removeEventListener('click', this._oscZoomDelegatedClick); delete this._oscZoomDelegatedClick; }catch(e){}
 
     // close audio context
     try{ if(this.ctx && typeof this.ctx.close === 'function'){ this.ctx.close().catch(()=>{}); } }catch(e){}

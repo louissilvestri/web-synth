@@ -13,7 +13,19 @@
       <h1>Web Synth — Subtractive Analog</h1>
       <div class="controls-row">
         <label class="master-control">Master <span class="slider-wrap"><input id="masterGain" type="range" min="0" max="1" step="0.01" value="0.8"></span>
-          <canvas id="oscilloscope" class="oscilloscope" width="200" height="64" aria-hidden="true"></canvas>
+          <div class="osc-wrap">
+            <div class="osc-zoom-x">
+              <button class="led-btn osc-zoom-btn" data-axis="y" data-zoom="in" aria-label="Zoom Y in">+</button>
+              <button class="led-btn osc-zoom-btn" data-axis="y" data-zoom="out" aria-label="Zoom Y out">−</button>
+            </div>
+            <div class="osc-canvas-wrap">
+              <canvas id="oscilloscope" class="oscilloscope" width="200" height="64" aria-hidden="true"></canvas>
+              <div class="osc-zoom-y">
+                <button class="led-btn osc-zoom-btn" data-axis="x" data-zoom="in" aria-label="Zoom X in">+</button>
+                <button class="led-btn osc-zoom-btn" data-axis="x" data-zoom="out" aria-label="Zoom X out">−</button>
+              </div>
+            </div>
+          </div>
           <div id="vu_meter" class="vu-meter" aria-hidden="false">
             <div class="vu-led" data-level="1"></div>
             <div class="vu-led" data-level="2"></div>

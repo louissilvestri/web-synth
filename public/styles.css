@@ -87,6 +87,13 @@ label.led input[type=checkbox]:checked + .led-indicator{background:#ff3b3b;box-s
 /* VU meter */
 .master-control{display:flex;align-items:center;gap:10px}
 .oscilloscope{width:200px;height:64px;border-radius:6px;background:linear-gradient(90deg,#001a0f,#00120a);border:1px solid rgba(124,255,107,0.06);box-shadow:0 2px 8px rgba(0,0,0,0.45);margin-left:8px}
+.osc-wrap{display:flex;align-items:center;gap:8px;margin-left:8px}
+.osc-zoom-x{display:flex;flex-direction:column;gap:6px;align-items:center}
+.osc-canvas-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+.osc-zoom-y{display:flex;gap:8px}
+.osc-zoom-btn{width:22px;height:22px;padding:0;font-size:0.8rem;border-radius:4px}
+.osc-zoom-btn.pressed{background:#3bff7b;color:#022200;box-shadow:0 0 8px rgba(59,255,123,0.9), inset 0 2px 6px rgba(150,255,200,0.25)}
+
 .midi-control{display:flex;align-items:center;gap:8px;margin-left:8px}
 .midi-control .midi-status{font-size:0.42rem;color:var(--muted);padding-left:4px}
 .midi-control select{background:transparent;border:1px solid rgba(124,255,107,0.06);color:var(--phosphor);padding:4px;border-radius:4px}
