@@ -750,7 +750,7 @@ class Synth {
     document.getElementById('osc_mix').addEventListener('input',(e)=>{ this.controls.mix = parseFloat(e.target.value); this._updateAllVoicesLevels(); });
 
     // LFO
-    document.getElementById('lfo_rate').addEventListener('input',(e)=>{ this.controls.lfo.rate = parseFloat(e.target.value); this.lfo.frequency.value = this.controls.lfo.rate; try{ if(this.effects && this.effects.phase && this.effects.phase.experimental && this.effects.phase.experimental.lfo){ this.effects.phase.experimental.lfo.frequency.setValueAtTime(this.controls.lfo.rate, this.ctx.currentTime); } }catch(ex){} try{ this.setChorusRate(this.controls.lfo.rate); }catch(ex){} });
+    document.getElementById('lfo_rate').addEventListener('input',(e)=>{ this.controls.lfo.rate = parseFloat(e.target.value); this.lfo.frequency.value = this.controls.lfo.rate; try{ if(this.effects && this.effects.phase && this.effects.phase.experimental && this.effects.phase.experimental.lfo){ this.effects.phase.experimental.lfo.frequency.setValueAtTime(this.controls.lfo.rate, this.ctx.currentTime); } }catch(ex){} try{ this.setChorusRate(this.controls.lfo.rate); }catch(ex){} try{ this._updateLfoLed(this.controls.lfo.rate); }catch(ex){} });
     document.getElementById('lfo_depth').addEventListener('input',(e)=>{ this.controls.lfo.depth = parseFloat(e.target.value); this._updateLFODepth(); });
     document.querySelectorAll('.lfo_target').forEach(cb=>{
       cb.addEventListener('change',(e)=>{ this.setLfoTarget(cb.value, cb.checked); });
@@ -830,7 +830,28 @@ class Synth {
     this._buildKeyboard();
     // bind oscilloscope zoom controls after UI is ready
     this._bindOscZoomControls();
+    try{ this._startLfoLed(); }catch(e){}
   }
+
+  // start a pulsing LED that follows the global LFO rate using CSS animation (more reliable at high rates)
+  _startLfoLed(){
+    try{
+      const el = document.getElementById('lfo_led'); if(!el) return;
+      // ensure the anim class is present
+      el.classList.add('lfo-anim');
+      // set initial duration based on current rate
+      this._updateLfoLed((this.controls && this.controls.lfo && this.controls.lfo.rate) ? this.controls.lfo.rate : (this.lfo && this.lfo.frequency ? this.lfo.frequency.value : 1));
+      try{ window.addEventListener('unload', ()=>{ try{ this._stopLfoLed(); }catch(e){} }); }catch(e){}
+    }catch(e){}
+  }
+
+  _updateLfoLed(rate){ try{ const el = document.getElementById('lfo_led'); if(!el) return; const r = Math.max(0.001, rate || 0.001); const period = 1 / r; // seconds per cycle
+      // clamp to reasonable range to avoid extremely tiny durations
+      const dur = Math.max(0.05, Math.min(10, period)); el.style.animationDuration = dur + 's';
+    }catch(e){}
+  }
+
+  _stopLfoLed(){ try{ const el = document.getElementById('lfo_led'); if(el){ el.classList.remove('lfo-anim'); el.style.opacity = 0.08; el.style.boxShadow = 'none'; el.style.animationDuration = ''; } }catch(e){} }
 
   _buildKeyboard(){
     const keys = [

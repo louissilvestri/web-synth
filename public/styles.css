@@ -16,6 +16,10 @@ h1{margin:0;font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:v
 .box.osc-box{height:var(--box-lfo-h);box-sizing:border-box;overflow:hidden}
 .box.mix-box{height:var(--box-lfo-h);box-sizing:border-box;overflow:hidden}
 .box.lfo-box{min-width:260px;grid-column:span 2;padding:14px;height:var(--box-lfo-h);box-sizing:border-box;overflow:auto}
+.box.lfo-box h3{display:flex;align-items:center;gap:10px}
+.lfo-led{width:12px;height:12px;border-radius:50%;background:#ff4040;opacity:0.08;display:inline-block;margin-left:8px}
+@keyframes lfo-pulse { 0%{ opacity:0.08; box-shadow:none; transform:scale(1); } 50%{ opacity:1; box-shadow:0 0 10px rgba(255,80,80,0.6); transform:scale(1.06); } 100%{ opacity:0.08; box-shadow:none; transform:scale(1); } }
+.lfo-anim{ animation-name: lfo-pulse; animation-timing-function: linear; animation-iteration-count: infinite; animation-duration: 2s; animation-play-state: running; } 
  .box.filter-box{height:var(--box-lfo-h);box-sizing:border-box;overflow:hidden}
 .box.effects-box{min-width:220px;height:375px;box-sizing:border-box;overflow:auto}
  .box.adsr-box{height:375px;box-sizing:border-box;overflow:auto}
@@ -31,8 +35,8 @@ label{display:block;margin:6px 0;font-size:0.48rem;color:var(--phosphor)}
 .box.osc-box .controls-grid .control{align-items:flex-start}
 
 /* Filter controls: ensure columns align for type, cutoff, Q, EnvAmt (LFO-style compact sliders) */
-.box.filter-box .controls-grid{display:grid;grid-template-columns:1fr 60px 60px 60px;align-items:flex-end;gap:12px}
-.box.filter-box .controls-grid .control{align-items:flex-end;justify-self:center}
+.box.filter-box .controls-grid{display:grid;grid-template-columns:1fr 60px 60px 60px;align-items:center;gap:12px}
+.box.filter-box .controls-grid .control{align-items:center;justify-self:center}
 .box.filter-box .controls-grid .control .slider-wrap{height:80px;display:flex;align-items:center;justify-content:center;margin:0;padding:3px} 
 
 /* Align ADSR controls to top and tighten spacing; center controls so sliders line up under labels */
