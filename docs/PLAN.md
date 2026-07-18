@@ -67,10 +67,27 @@ to an issue.
 - [ ] Web MIDI input: notes, velocity, pitch bend, mod CC1, sustain CC64, device picker (#22)
 - [ ] Pitch/mod wheel UI + Model D mod-mix (VCO4 ↔ noise) routing (#23)
 - [ ] MG2 (arp clock / trigger LFO) engine + panel (#23)
+- [ ] **Virtual Patch** modulation routing matrix, MS2000-style: 6 slots,
+      source → destination with bipolar amount (#35)
 
-**Exit criteria:** latched arp over MIDI with an X-Mod sweep — the Mono/Poly party trick.
+**Exit criteria:** latched arp over MIDI with an X-Mod sweep — the Mono/Poly party trick —
+plus a Virtual Patch route (e.g. velocity → cutoff) audibly working.
 
-## M4 — Presets, sound character & polish
+## M4 — Surface layout (collaborative)
+
+Runs **after M3 on purpose**: with MIDI keyboard, wheels, and arp available, layout is
+tested by actually playing — glide, keyboard tracking, performance ergonomics.
+
+- [ ] Layout config: panel/control arrangement from a serializable description (#36)
+- [ ] Arrange mode: drag-to-rearrange panels/controls in the running app, exports to config (#37)
+- [ ] Iteration sessions: user rearranges & plays, Claude refines + parameter tweaks
+      (ranges, defaults, scales) found while playing (#38)
+- [ ] Monitor-size pass: 1366×768 → 2560×1440, laptop scaling, no page h-scroll (#39)
+- [ ] Final design-principles pass: ui-ux-expert + usability-auditor; fold into DESIGN.md (#40)
+
+**Exit criteria:** user signs off the arrangement; a11y preserved.
+
+## M5 — Presets, sound character & polish
 
 - [ ] Preset system: save-as / load / delete with confirm, JSON import/export (#24)
 - [ ] Factory bank: classic Model D + Mono/Poly recipes, A/B'd against reference recordings (#24)
@@ -82,7 +99,7 @@ to an issue.
 
 **Exit criteria:** Lighthouse a11y ≥ 95; factory patches sound credibly like the hardware.
 
-## M5 — FX & release
+## M6 — FX & release
 
 - [ ] Delay (clamped feedback loop) (#28)
 - [ ] Chorus (multi-voice, modulated delay lines) (#29)
@@ -92,3 +109,8 @@ to an issue.
 - [ ] Retarget Dependabot to `main`
 
 **Exit criteria:** tagged release; live URL in repo About.
+
+---
+
+*Milestone history: "M4 — Surface layout" was inserted 2026-07-18 at the user's direction
+(play-testable layout collaboration after MIDI lands); presets/FX shifted to M5/M6.*

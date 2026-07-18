@@ -37,6 +37,7 @@ Sources: Korg owner's manual (korg.com PDF), service manual, Wikipedia, synthark
 | **Arpeggiator** | Up / Down / Up-Down, **latch**, 1/2/full octave range, MG2-clocked with BPM |
 | **PW/PWM** | Shared PW (±35% offset from each pulse waveform's base width) + PWM depth with MG1 source — sliders in the oscillator panel *(placement decided in M2 review)* |
 | **Dual mod generators** | MG1 = general LFO (pitch/filter/PWM/fx-amount, incl. S&H); MG2 = arp clock / trigger |
+| **Virtual Patch matrix** *(added 2026-07-18 — MS2000 heritage)* | 6 routing slots, source → destination with bipolar amount. Sources: EG1/EG2/MG1/MG2/velocity/kbd-track/mod wheel/pitch bend. Destinations: pitch/PW/cutoff/resonance/amp/noise/fx-amount/MG1 rate |
 | **Trigger mode** | Single/multiple retrigger — audibly reshapes chords through the shared filter EG |
 
 ## Modern layer

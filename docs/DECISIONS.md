@@ -32,3 +32,10 @@ Additional locked requirements (2026-07-17):
 - **PW/PWM belong in the oscillator panel** as shared sliders (Mono/Poly placement), not a
   routing slider buried in MG1.
 - **Moog-style sync Interval** control added to the Effects section (0..+24 st slave offset).
+- **Virtual Patch routing matrix** (MS2000 heritage — the user's third reference synth):
+  fixed hardware routes are not enough; 6-slot source→destination matrix added to M3 (#35).
+- **New M4 "Surface layout (collaborative)"** inserted between the performance layer and
+  presets: the user rearranges panels/controls hands-on (drag mode) and play-tests with MIDI
+  keyboard/wheels/arp before layouts freeze; ends with a ui-ux-expert + usability-auditor
+  pass. Deliberately after M3 so testing uses real playing, not clicking. Presets → M5,
+  FX/release → M6.
