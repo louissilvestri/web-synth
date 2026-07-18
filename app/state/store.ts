@@ -4,6 +4,7 @@ import { create } from "zustand";
 import type { Patch } from "../../engine/core/patch";
 import { defaultPatch } from "../../engine/core/patch";
 import { audioEngine } from "../../engine/host/audioEngine";
+import { mergeSavedPatch } from "./migrate";
 
 /**
  * The patch store — single source of truth for the instrument state.
@@ -31,33 +32,21 @@ interface SynthState {
   update: <K extends keyof Patch>(module: K, partial: Partial<Patch[K]>) => void;
   updateVco: (index: number, partial: Partial<Patch["vco"][number]>) => void;
   resetPatch: () => void;
+  /**
+   * Load the autosaved working patch. Called from a useEffect after mount —
+   * the server prerender and the first client render must both use defaults,
+   * or the saved values cause a hydration mismatch.
+   */
+  hydrate: () => void;
 }
 
-function loadWorkingPatch(): Patch {
-  if (typeof window === "undefined") return defaultPatch();
+function loadWorkingPatch(): Patch | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultPatch();
-    // Merge per module over defaults so patches survive schema additions —
-    // a wholesale module replace would drop newly added keys (NaN hazard).
-    const saved = JSON.parse(raw) as Partial<Patch>;
-    const base = defaultPatch();
-    const merged = { ...base } as Patch & Record<string, unknown>;
-    for (const key of Object.keys(base) as (keyof Patch)[]) {
-      const sv = saved[key];
-      if (sv === undefined) continue;
-      if (key === "vco") {
-        merged.vco = base.vco.map((v, i) => ({
-          ...v,
-          ...(saved.vco?.[i] ?? {}),
-        })) as Patch["vco"];
-      } else if (typeof sv === "object" && sv !== null) {
-        merged[key] = { ...base[key], ...sv } as never;
-      }
-    }
-    return merged;
+    if (!raw) return null;
+    return mergeSavedPatch(JSON.parse(raw) as Partial<Patch>);
   } catch {
-    return defaultPatch();
+    return null;
   }
 }
 
@@ -79,7 +68,7 @@ function pushPatch(patch: Patch): void {
 }
 
 export const useSynthStore = create<SynthState>((set, get) => ({
-  patch: loadWorkingPatch(),
+  patch: defaultPatch(),
   power: "off",
   powerError: "",
   activeNotes: [],
@@ -141,6 +130,13 @@ export const useSynthStore = create<SynthState>((set, get) => ({
   resetPatch: () => {
     const patch = defaultPatch();
     pushPatch(patch);
+    set({ patch });
+  },
+
+  hydrate: () => {
+    const patch = loadWorkingPatch();
+    if (!patch) return;
+    audioEngine.setPatch(patch);
     set({ patch });
   },
 }));

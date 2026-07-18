@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useSynthStore } from "../state/store";
 import { Keyboard } from "./Keyboard";
 import { Meters } from "./Meters";
 import { EffectsPanel, Mg1Panel } from "./panels/EffectsMod";
@@ -14,6 +16,10 @@ import { VcoBank } from "./panels/VcoBank";
  * output, with the performance row (keyboard) anchored at the bottom.
  */
 export function Synth() {
+  const hydrate = useSynthStore((s) => s.hydrate);
+  // Load the autosaved working patch after hydration (see store.hydrate).
+  useEffect(() => hydrate(), [hydrate]);
+
   return (
     <div className="synth">
       <div className="synth__panels">

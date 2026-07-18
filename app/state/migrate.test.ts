@@ -1,40 +1,21 @@
 import { describe, expect, it } from "vitest";
+import type { Patch } from "../../engine/core/patch";
 import { defaultPatch } from "../../engine/core/patch";
+import { mergeSavedPatch } from "./migrate";
 
 /**
  * Guards the autosave migration path: a patch saved before a schema addition
- * must come back with every new key present (an undefined leaking into the
- * engine's pitch math becomes NaN). Mirrors the merge in store.ts
- * loadWorkingPatch — kept as a pure copy here because the store module
- * reads localStorage at import time.
+ * must come back with every new key present — an undefined leaking into the
+ * engine's pitch math becomes NaN.
  */
-function mergeSaved(saved: Record<string, unknown>) {
-  const base = defaultPatch();
-  const merged = { ...base } as ReturnType<typeof defaultPatch> &
-    Record<string, unknown>;
-  for (const key of Object.keys(base) as (keyof ReturnType<typeof defaultPatch>)[]) {
-    const sv = saved[key];
-    if (sv === undefined) continue;
-    if (key === "vco") {
-      merged.vco = base.vco.map((v, i) => ({
-        ...v,
-        ...((saved.vco as object[] | undefined)?.[i] ?? {}),
-      })) as typeof base.vco;
-    } else if (typeof sv === "object" && sv !== null) {
-      merged[key] = { ...base[key], ...sv } as never;
-    }
-  }
-  return merged;
-}
-
 describe("working-patch migration", () => {
   it("fills new keys inside modules an old save already had", () => {
     // Old save: effects existed before intervalSemitones did.
     const old = {
       effects: { sync: true, xmod: 0.5, topology: "single", modSource: "off", modDepth: 0 },
       vcf: { cutoffHz: 900 },
-    };
-    const p = mergeSaved(old);
+    } as unknown as Partial<Patch>;
+    const p = mergeSavedPatch(old);
     expect(p.effects.sync).toBe(true);
     expect(p.effects.intervalSemitones).toBe(0); // new key defaulted, not undefined
     expect(p.vcf.cutoffHz).toBe(900);
@@ -43,11 +24,20 @@ describe("working-patch migration", () => {
   });
 
   it("every module value stays defined after merging an empty save", () => {
-    const p = mergeSaved({});
+    const p = mergeSavedPatch({});
     for (const mod of Object.values(p)) {
       for (const v of Object.values(mod as Record<string, unknown>)) {
         expect(v).not.toBeUndefined();
       }
     }
+  });
+
+  it("merges per-VCO overrides while keeping unspecified VCOs at defaults", () => {
+    const p = mergeSavedPatch({
+      vco: [{ wave: "square" }] as unknown as Patch["vco"],
+    });
+    expect(p.vco[0].wave).toBe("square");
+    expect(p.vco[0].level).toBe(defaultPatch().vco[0].level);
+    expect(p.vco[2]).toEqual(defaultPatch().vco[2]);
   });
 });
