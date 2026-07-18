@@ -110,7 +110,67 @@ export interface MasterPatch {
   volume: number; // 0..1
   /** A-440 reference sine for tuning by ear (Model D panel switch). */
   a440: boolean;
+  /** Pitch-wheel range in semitones. */
+  bendRangeSemis: number;
 }
+
+export type ArpMode = "up" | "down" | "updown";
+
+export interface ArpPatch {
+  on: boolean;
+  mode: ArpMode;
+  /** Latch: released keys keep arpeggiating; a fresh press starts a new set. */
+  latch: boolean;
+  /** Octave range: the held set repeated across 1–3 octaves. */
+  rangeOct: 1 | 2 | 3;
+  bpm: number; // steps are eighth notes
+  /** Gate length as a fraction of the step. */
+  gate: number;
+}
+
+export interface Mg2Patch {
+  rateHz: number;
+  wave: "triangle" | "square";
+}
+
+/** Model D mod-mix: one audio-rate source blend under the mod wheel. */
+export interface ModMixPatch {
+  /** 0 = VCO 4, 1 = noise (crossfade). */
+  mix: number;
+  toPitch: boolean;
+  toFilter: boolean;
+}
+
+export type VpSource =
+  | "off"
+  | "eg1"
+  | "eg2"
+  | "mg1"
+  | "mg2"
+  | "velocity"
+  | "kbdTrack"
+  | "modWheel"
+  | "pitchBend";
+
+export type VpDest =
+  | "pitch"
+  | "pw"
+  | "cutoff"
+  | "resonance"
+  | "amp"
+  | "noise"
+  | "fxAmount"
+  | "mg1Rate";
+
+/** One Virtual Patch routing slot (MS2000 heritage). */
+export interface VpSlot {
+  source: VpSource;
+  dest: VpDest;
+  /** Bipolar depth −1..1. */
+  amount: number;
+}
+
+export type VirtualPatch = [VpSlot, VpSlot, VpSlot, VpSlot, VpSlot, VpSlot];
 
 export interface Patch {
   vco: [VcoPatch, VcoPatch, VcoPatch, VcoPatch];
@@ -123,6 +183,10 @@ export interface Patch {
   effects: EffectsPatch;
   pwm: PwmPatch;
   mg1: Mg1Patch;
+  mg2: Mg2Patch;
+  modMix: ModMixPatch;
+  arp: ArpPatch;
+  virtualPatch: VirtualPatch;
   master: MasterPatch;
 }
 
@@ -157,6 +221,17 @@ export function defaultPatch(): Patch {
     },
     pwm: { widthOffset: 0, depth: 0 },
     mg1: { wave: "triangle", rateHz: 5, toPitchCents: 0, toCutoff: 0 },
-    master: { tuneCents: 0, volume: 0.75, a440: false },
+    mg2: { rateHz: 2, wave: "triangle" },
+    modMix: { mix: 1, toPitch: true, toFilter: false },
+    arp: { on: false, mode: "up", latch: false, rangeOct: 1, bpm: 120, gate: 0.5 },
+    virtualPatch: [
+      { source: "off", dest: "cutoff", amount: 0 },
+      { source: "off", dest: "cutoff", amount: 0 },
+      { source: "off", dest: "cutoff", amount: 0 },
+      { source: "off", dest: "cutoff", amount: 0 },
+      { source: "off", dest: "cutoff", amount: 0 },
+      { source: "off", dest: "cutoff", amount: 0 },
+    ],
+    master: { tuneCents: 0, volume: 0.75, a440: false, bendRangeSemis: 2 },
   };
 }

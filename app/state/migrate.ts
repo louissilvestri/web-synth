@@ -17,6 +17,12 @@ export function mergeSavedPatch(saved: Partial<Patch>): Patch {
         ...v,
         ...(saved.vco?.[i] ?? {}),
       })) as Patch["vco"];
+    } else if (key === "virtualPatch") {
+      // Array module: merge per slot (object-spreading would de-array it).
+      merged.virtualPatch = base.virtualPatch.map((slot, i) => ({
+        ...slot,
+        ...(saved.virtualPatch?.[i] ?? {}),
+      })) as Patch["virtualPatch"];
     } else if (typeof sv === "object" && sv !== null) {
       merged[key] = { ...base[key], ...sv } as never;
     }

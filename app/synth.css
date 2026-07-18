@@ -96,6 +96,38 @@
 .kbd__c { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
   font-size: var(--fs-xs); color: var(--bg); pointer-events: none; }
 
+/* ---- virtual patch matrix ---- */
+.vp { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: calc(var(--gap) * 3); }
+.vp__slot { display: flex; flex-direction: column; align-items: center; gap: var(--gap);
+  padding: var(--pad); border: var(--bw) solid var(--border); border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface-2) 40%, transparent); }
+.vp__slot--off { opacity: 0.55; }
+.vp__num { font-size: var(--fs-xs); color: var(--muted); align-self: flex-start; }
+.vp__field { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+.vp__label { font-size: var(--fs-xs); color: var(--muted); }
+.vp__select { font-family: var(--font-body); font-size: var(--fs-xs); color: var(--text);
+  background: var(--surface-2); border: var(--bw) solid var(--border);
+  border-radius: calc(var(--radius) - 5px); padding: 5px 7px; width: 100%; cursor: pointer; }
+.vp__select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ---- performance row: wheels + keyboard + midi ---- */
+.perf-row { display: flex; gap: calc(var(--gap) * 3); align-items: stretch; }
+.perf-row .kbd { flex: 1; }
+.wheels { display: flex; gap: calc(var(--gap) * 2); align-items: flex-end;
+  padding: calc(var(--pad) * 1.5); background: var(--surface);
+  border: var(--bw) solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+.wheels__wheel { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 46px; }
+.wheels__bend { height: 132px; width: 44px; position: relative; }
+.wheels__mix { display: flex; gap: calc(var(--gap) * 2); align-items: flex-end; }
+.wheels__dest { display: flex; flex-direction: column; gap: var(--gap); }
+.midi { display: flex; flex-direction: column; gap: 4px; align-items: center;
+  justify-content: center; padding: var(--pad); }
+.midi__led { width: 8px; height: 8px; border-radius: 50%; background: var(--surface-2);
+  border: var(--bw) solid var(--border); transition: background 80ms linear; }
+.midi__led.is-active { background: var(--ok); }
+.midi__na { font-size: var(--fs-xs); align-self: center; padding: var(--pad); }
+
 /* ---- meters ---- */
 .meter__canvas { width: 100%; border: var(--bw) solid var(--border);
   border-radius: calc(var(--radius) - 4px); background: var(--surface-2); display: block; }

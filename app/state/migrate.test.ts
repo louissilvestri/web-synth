@@ -32,6 +32,16 @@ describe("working-patch migration", () => {
     }
   });
 
+  it("virtualPatch stays a real array after merging", () => {
+    const p = mergeSavedPatch({
+      virtualPatch: [{ source: "mg1", dest: "cutoff", amount: 0.5 }] as unknown as Patch["virtualPatch"],
+    });
+    expect(Array.isArray(p.virtualPatch)).toBe(true);
+    expect(p.virtualPatch).toHaveLength(6);
+    expect(p.virtualPatch[0].source).toBe("mg1");
+    expect(p.virtualPatch[1].source).toBe("off");
+  });
+
   it("merges per-VCO overrides while keeping unspecified VCOs at defaults", () => {
     const p = mergeSavedPatch({
       vco: [{ wave: "square" }] as unknown as Patch["vco"],
