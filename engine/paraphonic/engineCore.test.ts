@@ -87,8 +87,11 @@ describe("EngineCore", () => {
     });
     p.effects.sync = true;
     p.effects.intervalSemitones = 7;
-    p.pwm.widthOffset = 0.3;
-    p.pwm.depth = 1;
+    p.vco.forEach((v, i) => {
+      v.pw = 0.3;
+      v.pwmDepth = 1;
+      if (i > 0) v.pwSyncTo = 0; // slaves follow VCO 1's width
+    });
     p.mg1.rateHz = 6;
     core.setPatch(p);
     core.noteOn(48, 1);
@@ -170,6 +173,25 @@ describe("EngineCore", () => {
     core.setSustain(false); // pedal up → release flushes
     render(core, 1.0);
     expect(rms(render(core, 0.1))).toBeLessThan(1e-3);
+  });
+
+  it("pw sync: a linked VCO follows its source's stored value, one hop only", async () => {
+    const { resolveLinked } = await import("./engineCore");
+    const vcos = [
+      { pw: 0.3, pwmDepth: 0.9 },
+      { pw: -0.3, pwmDepth: 0.1 },
+      { pw: 0.1, pwmDepth: 0.5 },
+      { pw: 0, pwmDepth: 0 },
+    ];
+    expect(resolveLinked(vcos, 1, "pw", null)).toBe(-0.3); // own value
+    expect(resolveLinked(vcos, 1, "pw", 0)).toBe(0.3); // follows VCO 1
+    expect(resolveLinked(vcos, 1, "pwmDepth", 0)).toBe(0.9);
+    // One hop only: VCO3 follows VCO2 — reads VCO2's STORED pw, even if
+    // VCO2 itself is linked elsewhere (no chasing, so no cycles possible).
+    expect(resolveLinked(vcos, 2, "pw", 1)).toBe(-0.3);
+    // Self/invalid links degrade to own value.
+    expect(resolveLinked(vcos, 2, "pw", 2)).toBe(0.1);
+    expect(resolveLinked(vcos, 2, "pw", 9)).toBe(0.1);
   });
 
   it("A-440 reference tone sounds with no notes held", () => {

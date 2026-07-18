@@ -25,6 +25,20 @@ import { KeyAssign } from "./keyAssign";
 /** Detune offsets (cents) spreading a unison stack symmetrically. */
 const UNISON_SPREAD = [-1, -0.33, 0.33, 1];
 
+/**
+ * Resolve a per-VCO value that may follow another VCO (one hop only: if the
+ * source is itself linked, we read its *stored* value — no chains, no cycles).
+ */
+export function resolveLinked(
+  vcos: readonly { pw: number; pwmDepth: number }[],
+  self: number,
+  field: "pw" | "pwmDepth",
+  linkTo: number | null,
+): number {
+  if (linkTo === null || linkTo === self) return vcos[self][field];
+  return vcos[linkTo]?.[field] ?? vcos[self][field];
+}
+
 /** Virtual Patch destination accumulator (per-sample). */
 type VpBus = Record<VpDest, number>;
 
@@ -314,7 +328,10 @@ export class EngineCore {
           freq *= 2 ** (this.lastOut[masterIdx] * p.effects.xmod * fxSweep * 3);
         }
 
-        const pwOffset = p.pwm.widthOffset + p.pwm.depth * 0.35 * mg + vp.pw * 0.35;
+        // Per-VCO PW/PWM, optionally following another VCO (one hop, no chains).
+        const pwBase = resolveLinked(p.vco, i, "pw", vp_.pwSyncTo);
+        const pwmDepth = resolveLinked(p.vco, i, "pwmDepth", vp_.pwmSyncTo);
+        const pwOffset = pwBase + pwmDepth * 0.35 * mg + vp.pw * 0.35;
         const sample = this.vcos[i].tick(
           freq,
           vp_.wave,

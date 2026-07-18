@@ -20,7 +20,14 @@ describe("working-patch migration", () => {
     expect(p.effects.intervalSemitones).toBe(0); // new key defaulted, not undefined
     expect(p.vcf.cutoffHz).toBe(900);
     expect(p.vcf.resonance).toBe(defaultPatch().vcf.resonance);
-    expect(p.pwm).toEqual(defaultPatch().pwm); // module absent from old save
+    expect(p.vco[0].pwSyncTo).toBeNull(); // new per-VCO keys defaulted
+  });
+
+  it("drops modules that no longer exist in the schema (old shared pwm)", () => {
+    const p = mergeSavedPatch({
+      pwm: { widthOffset: 0.2, depth: 1 },
+    } as unknown as Partial<Patch>);
+    expect("pwm" in p).toBe(false);
   });
 
   it("every module value stays defined after merging an empty save", () => {

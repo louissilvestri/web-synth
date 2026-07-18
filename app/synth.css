@@ -91,6 +91,9 @@
 .seg__btn:hover { color: var(--text); }
 .seg__btn.is-active { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .seg__btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.seg--mini { padding: 1px; }
+.seg--mini .seg__btn { padding: 1px 5px; min-width: 18px; font-size: 9px; }
+.vco__pw { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 
 .tgl { display: inline-flex; align-items: center; gap: 7px; border: var(--bw) solid var(--border);
   background: var(--surface-2); color: var(--muted); border-radius: var(--radius);

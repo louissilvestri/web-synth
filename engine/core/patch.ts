@@ -34,6 +34,14 @@ export interface VcoPatch {
   level: number;
   /** VCO 4 only (Model D Osc-3 trick): false = free-running, ignores the keyboard. */
   keyboardTrack: boolean;
+  /** Pulse-width offset from the waveform's base width, ±0.35. */
+  pw: number;
+  /** MG1 → width modulation depth, 0..1. */
+  pwmDepth: number;
+  /** Follow another VCO's pw value (index 0–3, one hop) instead of our own. */
+  pwSyncTo: number | null;
+  /** Follow another VCO's pwmDepth value (index 0–3, one hop). */
+  pwmSyncTo: number | null;
 }
 
 export interface MixerPatch {
@@ -90,13 +98,6 @@ export interface EffectsPatch {
   intervalSemitones: number; // 0..24
 }
 
-/** Shared pulse-width controls (Mono/Poly-style: one PW + PWM for the bank). */
-export interface PwmPatch {
-  /** Offset from each pulse waveform's base width, ±0.35. */
-  widthOffset: number;
-  /** MG1 → width modulation depth, 0..1. */
-  depth: number;
-}
 
 export interface Mg1Patch {
   wave: MgWaveform;
@@ -181,7 +182,6 @@ export interface Patch {
   keyAssign: KeyAssignPatch;
   glide: GlidePatch;
   effects: EffectsPatch;
-  pwm: PwmPatch;
   mg1: Mg1Patch;
   mg2: Mg2Patch;
   modMix: ModMixPatch;
@@ -199,6 +199,10 @@ function vcoDefault(n: 1 | 2 | 3 | 4): VcoPatch {
     fineCents: n === 2 ? 6 : 0, // slight classic detune out of the box
     level: 0.8,
     keyboardTrack: true,
+    pw: 0,
+    pwmDepth: 0,
+    pwSyncTo: null,
+    pwmSyncTo: null,
   };
 }
 
@@ -219,7 +223,6 @@ export function defaultPatch(): Patch {
       modDepth: 0,
       intervalSemitones: 0,
     },
-    pwm: { widthOffset: 0, depth: 0 },
     mg1: { wave: "triangle", rateHz: 5, toPitchCents: 0, toCutoff: 0 },
     mg2: { rateHz: 2, wave: "triangle" },
     modMix: { mix: 1, toPitch: true, toFilter: false },

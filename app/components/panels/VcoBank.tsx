@@ -26,63 +26,135 @@ const RANGES: { value: OscRange; text: string }[] = [
   { value: "2", text: "2'" },
 ];
 
+/** Pick another VCO to follow for a PW/PWM value ("—" = own value). */
+function SyncSelect({
+  self,
+  value,
+  onChange,
+  label,
+}: {
+  self: number;
+  value: number | null;
+  onChange: (v: number | null) => void;
+  label: string;
+}) {
+  return (
+    <div className="seg seg--mini" role="radiogroup" aria-label={label}>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={value === null}
+        className={`seg__btn${value === null ? " is-active" : ""}`}
+        onClick={() => onChange(null)}
+        title="Use this oscillator's own value"
+      >
+        —
+      </button>
+      {[0, 1, 2, 3]
+        .filter((i) => i !== self)
+        .map((i) => (
+          <button
+            key={i}
+            type="button"
+            role="radio"
+            aria-checked={value === i}
+            className={`seg__btn${value === i ? " is-active" : ""}`}
+            onClick={() => onChange(i)}
+            title={`Follow VCO ${i + 1}`}
+          >
+            {i + 1}
+          </button>
+        ))}
+    </div>
+  );
+}
+
 export function VcoBank() {
   const vco = useSynthStore((s) => s.patch.vco);
-  const pwm = useSynthStore((s) => s.patch.pwm);
   const updateVco = useSynthStore((s) => s.updateVco);
-  const update = useSynthStore((s) => s.update);
 
   return (
     <section className="card panel" aria-label="Oscillator bank">
-      <div className="panel__row" style={{ justifyContent: "space-between" }}>
-        <h2 className="panel__title">Oscillators</h2>
-        {/* Shared PW/PWM (Mono/Poly-style): applies to pulse waveforms; MG1 is the mod source */}
-        <Sortable
-          scope="vco.pwm"
-          className="panel__sliders"
-          items={[
-            { id: "pw", el: <Slider label="PW" min={-0.35} max={0.35} value={pwm.widthOffset} format={(v) => `${v > 0 ? "+" : ""}${Math.round(v * 100)}%`} onChange={(widthOffset) => update("pwm", { widthOffset })} /> },
-            { id: "pwm", el: <Slider label="PWM" min={0} max={1} value={pwm.depth} format={(v) => `${Math.round(v * 100)}%`} onChange={(depth) => update("pwm", { depth })} /> },
-          ]}
-        />
-      </div>
+      <h2 className="panel__title">Oscillators</h2>
       <div className="vco-bank">
-        {vco.map((v, i) => (
-          <div key={i} className={`vco${v.enabled ? "" : " vco--off"}`}>
-            <div className="vco__head">
-              <Toggle label={`VCO ${i + 1}`} value={v.enabled} onChange={(on) => updateVco(i, { enabled: on })} />
-              {i === 3 && (
-                <Toggle label="KBD" value={v.keyboardTrack} onChange={(on) => updateVco(i, { keyboardTrack: on })} />
-              )}
+        {vco.map((v, i) => {
+          const pwSynced = v.pwSyncTo !== null;
+          const pwmSynced = v.pwmSyncTo !== null;
+          const pwShown = pwSynced ? (vco[v.pwSyncTo!]?.pw ?? v.pw) : v.pw;
+          const pwmShown = pwmSynced
+            ? (vco[v.pwmSyncTo!]?.pwmDepth ?? v.pwmDepth)
+            : v.pwmDepth;
+          return (
+            <div key={i} className={`vco${v.enabled ? "" : " vco--off"}`}>
+              <div className="vco__head">
+                <Toggle label={`VCO ${i + 1}`} value={v.enabled} onChange={(on) => updateVco(i, { enabled: on })} />
+                {i === 3 && (
+                  <Toggle label="KBD" value={v.keyboardTrack} onChange={(on) => updateVco(i, { keyboardTrack: on })} />
+                )}
+              </div>
+              {/* One shared scope for all four strips: rearranging one strip
+                  rearranges them all — the bank always reads uniformly. */}
+              <Sortable
+                scope="vco.strip"
+                className="panel__blocks"
+                items={[
+                  { id: "wave", el: <Segmented label={`VCO ${i + 1} waveform`} options={WAVES} value={v.wave} onChange={(wave) => updateVco(i, { wave })} /> },
+                  { id: "range", el: <Segmented label={`VCO ${i + 1} range`} options={RANGES} value={v.range} onChange={(range) => updateVco(i, { range })} /> },
+                  {
+                    id: "sliders",
+                    el: (
+                      <Sortable
+                        scope="vco.strip.sliders"
+                        className="panel__sliders"
+                        items={[
+                          ...(i > 0
+                            ? [{ id: "tune", el: <Slider label="Tune" min={-7} max={7} step={1} value={v.semitones} format={fmtSigned(" st")} onChange={(semitones: number) => updateVco(i, { semitones })} /> }]
+                            : []),
+                          { id: "fine", el: <Slider label="Fine" min={-50} max={50} value={v.fineCents} format={fmtSigned("¢")} onChange={(fineCents) => updateVco(i, { fineCents })} /> },
+                          { id: "level", el: <Slider label="Level" min={0} max={1} value={v.level} format={(x) => `${Math.round(x * 100)}`} onChange={(level) => updateVco(i, { level })} /> },
+                          {
+                            id: "pw",
+                            el: (
+                              <div className="vco__pw">
+                                <Slider
+                                  label="PW"
+                                  min={-0.35}
+                                  max={0.35}
+                                  value={pwShown}
+                                  format={(x) => `${x > 0 ? "+" : ""}${Math.round(x * 100)}%`}
+                                  onChange={(pw) => updateVco(i, { pw })}
+                                  disabled={pwSynced}
+                                />
+                                <SyncSelect self={i} value={v.pwSyncTo} label={`VCO ${i + 1} PW sync source`} onChange={(pwSyncTo) => updateVco(i, { pwSyncTo })} />
+                              </div>
+                            ),
+                          },
+                          {
+                            id: "pwm",
+                            el: (
+                              <div className="vco__pw">
+                                <Slider
+                                  label="PWM"
+                                  min={0}
+                                  max={1}
+                                  value={pwmShown}
+                                  format={(x) => `${Math.round(x * 100)}%`}
+                                  onChange={(pwmDepth) => updateVco(i, { pwmDepth })}
+                                  disabled={pwmSynced}
+                                />
+                                <SyncSelect self={i} value={v.pwmSyncTo} label={`VCO ${i + 1} PWM sync source`} onChange={(pwmSyncTo) => updateVco(i, { pwmSyncTo })} />
+                              </div>
+                            ),
+                          },
+                        ]}
+                      />
+                    ),
+                  },
+                ]}
+              />
             </div>
-            {/* One shared scope for all four strips: rearranging one strip
-                rearranges them all — the bank always reads uniformly. */}
-            <Sortable
-              scope="vco.strip"
-              className="panel__blocks"
-              items={[
-                { id: "wave", el: <Segmented label={`VCO ${i + 1} waveform`} options={WAVES} value={v.wave} onChange={(wave) => updateVco(i, { wave })} /> },
-                { id: "range", el: <Segmented label={`VCO ${i + 1} range`} options={RANGES} value={v.range} onChange={(range) => updateVco(i, { range })} /> },
-                {
-                  id: "sliders",
-                  el: (
-                    <Sortable
-                      scope="vco.strip.sliders"
-                      className="panel__sliders"
-                      items={[
-                        ...(i > 0
-                          ? [{ id: "tune", el: <Slider label="Tune" min={-7} max={7} step={1} value={v.semitones} format={fmtSigned(" st")} onChange={(semitones: number) => updateVco(i, { semitones })} /> }]
-                          : []),
-                        { id: "fine", el: <Slider label="Fine" min={-50} max={50} value={v.fineCents} format={fmtSigned("¢")} onChange={(fineCents) => updateVco(i, { fineCents })} /> },
-                        { id: "level", el: <Slider label="Level" min={0} max={1} value={v.level} format={(x) => `${Math.round(x * 100)}`} onChange={(level) => updateVco(i, { level })} /> },
-                      ]}
-                    />
-                  ),
-                },
-              ]}
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
