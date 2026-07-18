@@ -83,7 +83,7 @@ block diagram**. Every classic subtractive block is a named engine module with e
 outputs, and modulation ports:
 
 ```
-KBD/MIDI ─→ KeyAssign ─→ [VCO1 VCO2 VCO3 VCO4] ─→ MIXER (+ NOISE, + FEEDBACK) ─→ VCF ─→ VCA×4 ─→ FX ─→ LIMITER ─→ OUT
+KBD/MIDI ─→ KeyAssign ─→ [VCO1 VCO2 VCO3 VCO4] ─→ VCA×4 ─→ MIXER (+ NOISE, + FEEDBACK) ─→ VCF ─→ FX ─→ LIMITER ─→ OUT
                               ↑sync/x-mod from VCO1        (drive)                ↑            ↑
 Modulators:  EG1 (filter ADSR) ──────────────────────────────────────────────────┘            │
              EG2 (amp ADSR, cloned per VCO) ──────────────────────────────────────────────────┘

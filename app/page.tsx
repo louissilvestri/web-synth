@@ -1,3 +1,5 @@
+import { EngineSmokeTest } from "./components/EngineSmokeTest";
+
 export default function Home() {
   return (
     <main
@@ -16,8 +18,9 @@ export default function Home() {
           and AudioWorklet DSP.
         </p>
         <p className="u-mono u-muted" style={{ fontSize: "var(--fs-sm)" }}>
-          M0 · scaffold — engine lands in M1
+          M1 · paraphonic engine — control surface lands in M2
         </p>
+        <EngineSmokeTest />
       </div>
     </main>
   );
