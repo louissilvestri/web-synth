@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📖 Documentation (Wiki)
+    url: https://github.com/louissilvestri/web-synth/wiki
+    about: User manual, architecture notes, and building from source.
+  - name: 💬 Questions & ideas (Discussions)
+    url: https://github.com/louissilvestri/web-synth/discussions
+    about: Ask questions, share patches, or discuss sound-design ideas.

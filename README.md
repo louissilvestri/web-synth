@@ -1,81 +1,78 @@
-# Web Synth — Subtractive Analog (HTML5 + Web Audio API)
+# Web Synth v2 <!-- instrument name TBD — rebrand pending -->
 
-[![Node.js](https://img.shields.io/badge/node->=14-brightgreen)](https://nodejs.org/)
-[![Express](https://img.shields.io/badge/express-4.x-lightgrey)](https://expressjs.com/)
-[![Web Audio API](https://img.shields.io/badge/Web%20Audio-API-blue)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+[![CI](https://github.com/louissilvestri/web-synth/actions/workflows/ci.yml/badge.svg?branch=v2)](https://github.com/louissilvestri/web-synth/actions/workflows/ci.yml)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Web Audio](https://img.shields.io/badge/Web%20Audio-AudioWorklet-blue)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-A compact, browser-based subtractive synthesizer demo using the Web Audio API. It ships as a small Node.js static server so you can run it locally and experiment with synth parameters and routing.
+A hybrid **paraphonic synthesizer in the browser**: the voice of a **Minimoog
+Model D** (4 VCOs with the full waveform/range set, 24 dB transistor-ladder
+filter, dual contours) driven by the performance brain of a **Korg Mono/Poly**
+(key-assign modes, arpeggiator, chord memory, sync + cross-modulation).
 
-## Features
+> **Status: v2 ground-up rewrite in progress on the [`v2` branch](https://github.com/louissilvestri/web-synth/tree/v2)** —
+> currently at **M0 (scaffold)**. The plan lives in [docs/PLAN.md](docs/PLAN.md);
+> progress is tracked via [milestones](https://github.com/louissilvestri/web-synth/milestones)
+> and the project board. The old v1 demo is preserved at the
+> [`v1.0` tag](https://github.com/louissilvestri/web-synth/tree/v1.0).
 
-- Two oscillators (A/B): wave shape, detune, level
-- Oscillator mix, noise generator
-- Filter (Low/High/Bandpass) with Cutoff, Q, and envelope modulation
-- Amp ADSR and Filter ADSR (per-voice)
-- LFO (rate/depth) with multiple targets (pitch, detune, level, filter, mix)
-- Polyphony with voice-stealing and per-voice routing
-- Basic effects: Phase, Delay, Chorus
-- Visuals: retro UI, VU meter, on-screen keyboard
+## Architecture
 
-## Quick start
-
-1. Install dependencies:
-
-   npm install
-
-2. Start server:
-
-   npm start
-
-3. Open <http://localhost:3000> in a Chromium-based browser for best compatibility.
-
-## Architecture (high-level)
+The audio engine is a **typed module graph that mirrors the classic
+subtractive block diagram** — authentic Mono/Poly paraphonic topology: four
+individually pitched VCOs through **one shared ladder filter**, per-VCO amp
+VCAs.
 
 ```mermaid
 flowchart LR
-  Browser[Browser UI]
-  Browser -->|controls| AudioContext(AudioContext)
-  AudioContext --> Synth(Synth Controller)
-  Synth --> Voices[Voice Pool]
-  Voices --> Filter
-  Filter --> AmpEnv
-  AmpEnv --> Effects
-  Effects --> Master
-  Master --> Output[System Output]
+  KBD[KBD / MIDI] --> KA[Key assign<br/>Mono · Poly · Share · Chord]
+  KA --> V1[VCO 1] & V2[VCO 2] & V3[VCO 3] & V4[VCO 4]
+  V1 -.sync / x-mod.-> V2 & V3 & V4
+  V1 & V2 & V3 & V4 --> MIX[Mixer + Noise + Feedback]
+  MIX --> VCF[Ladder VCF 24 dB]
+  VCF --> VCA[VCA ×4]
+  VCA --> FX[FX: delay · chorus · phaser]
+  FX --> LIM[Limiter] --> OUT[Output]
+  EG1[EG 1 · filter ADSR] -.-> VCF
+  EG2[EG 2 · amp ADSR] -.-> VCA
+  MG1[MG 1 · LFO] -.-> V1 & VCF
+  MG2[MG 2 · arp clock] -.-> KA
 ```
 
-## Signal flow (per voice)
+- **DSP in an AudioWorklet** — polyBLEP band-limited oscillators, a
+  Huovilainen/ZDF-style ladder model, exponential envelopes, hard sync and
+  X-Mod at sample level. No Tone.js; native nodes can't express any of this.
+- **Framework-free engine core** (`engine/`) — pure TypeScript, unit-tested
+  without an AudioContext. React (Next.js App Router) renders the control
+  surface and never touches the audio graph.
+- **Static export** — no server; deploys to GitHub Pages.
 
-```mermaid
-flowchart LR
-  OscA[Osc A] & OscB[Osc B] & Noise[Noise] --> Mix[Mixer]
-  Mix --> Filter
-  Filter --> AmpEnv[AMP ADSR]
-  AmpEnv --> Effects
-  Effects --> Master
+## Feature set (target)
+
+| From the Model D | From the Mono/Poly | Modern layer |
+|---|---|---|
+| 6 waveforms × 6 ranges per VCO | Key assign: Mono / Poly / Unison-Share / Chord Memory | Preset bank + JSON import/export |
+| Mixer with white/pink noise + feedback/overload drive | Hard sync + X-Mod with EG/MG sweep | Web MIDI in (Chromium) + QWERTY/on-screen keys |
+| Self-oscillating 24 dB ladder, ⅓/⅔ keyboard tracking | Arpeggiator: up/down/up-down, latch, ranges | Oscilloscope, spectrum, VU |
+| Filter + loudness contours (full ADSR) | Dual MGs, PW/PWM, single/multiple trigger | Master limiter, a11y-first slider UI |
+| Glide, pitch/mod wheels, A-440 | | |
+
+## Quick start (dev)
+
+```bash
+npm install
+npm run dev     # → http://localhost:3000
 ```
 
-## Tools used
-
-- Node.js + Express for a tiny static server
-- Web Audio API for audio synthesis
-- nodemon (dev) for development
-
-## Known issues
-
-- **Phase effect** — partially implemented. Parameters (allpass staging, width/pan mapping, and wet routing) need refinement; audio artifacts present at extreme settings.
-- **Delay effect** — partial feedback loop implemented. Needs better time/rate clamping and a feedback limiter to prevent runaway amplification.
-- **Chorus effect** — basic multi-voice chorus exists. Voices and modulation depth need tuning to avoid phasing artifacts and CPU spikes.
-
-See `ISSUES.md` for detailed issue entries and reproduction steps (also file GitHub Issues to track progress).
+Quality gates: `npm run lint` · `npm run typecheck` · `npm test` · `npm run build`.
 
 ## Contributing
 
-Feel free to open issues or PRs. If you add features (MIDI, presets, extra effects), keep the code readable and add short notes to the README.
+Issues and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports
+and feature requests have templates; questions go to
+[Discussions](https://github.com/louissilvestri/web-synth/discussions).
 
 ## License
 
-MIT — see the LICENSE file.
-
-Enjoy!
+MIT — see [LICENSE](LICENSE).

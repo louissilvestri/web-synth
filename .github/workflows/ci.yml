@@ -1,20 +1,29 @@
+# Lint, typecheck, unit-test, and build the Next.js app on every push/PR to
+# main or v2. The engine core is framework-free TypeScript, so its DSP tests
+# run in seconds with no browser or AudioContext.
 name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, v2]
   pull_request:
-    branches: [ main ]
+    branches: [main, v2]
+
+permissions:
+  contents: read
 
 jobs:
-  lint:
+  ci:
+    name: Lint · typecheck · test · build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v5
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: 22
+          cache: npm
       - run: npm ci
       - run: npm run lint
-      - run: npm test --silent
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

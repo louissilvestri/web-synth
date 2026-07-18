@@ -1,0 +1,11 @@
+@import "../styles/signature-style.css";
+
+/* Map the next/font-loaded families onto the signature-style tokens.
+   signature-style.css is consumed verbatim from the design vault; only the
+   font sources are overridden here (self-hosted via next/font instead of a
+   Google Fonts request). */
+:root {
+  --font-display: var(--nf-display), system-ui, sans-serif;
+  --font-body: var(--nf-body), system-ui, sans-serif;
+  --font-mono: var(--nf-mono), ui-monospace, monospace;
+}

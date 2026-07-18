@@ -1,0 +1,23 @@
+# Keeps npm dependencies and the GitHub Actions used in .github/workflows up
+# to date. Targets the v2 branch while the rewrite lives there — retarget to
+# main (or just delete these lines) after the M5 merge.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    target-branch: "v2"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "deps"
+    labels:
+      - "dependencies"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "v2"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"

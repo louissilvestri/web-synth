@@ -1,0 +1,24 @@
+# Turns new TODO / FIXME comments into GitHub issues when they're pushed to
+# main or v2, and closes the issue when the comment is removed. Only scans the
+# pushed diff, so pre-existing comments are not touched.
+name: TODO to Issue
+
+on:
+  push:
+    branches: [main, v2]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  todo-to-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Convert TODO / FIXME comments to issues
+        uses: alstr/todo-to-issue-action@v5
+        with:
+          # Don't scan the .github config itself (its own comments mention the
+          # keywords) or planning docs.
+          IGNORE: ".github/.*,docs/.*"
