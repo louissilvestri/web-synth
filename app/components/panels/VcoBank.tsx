@@ -27,11 +27,20 @@ const RANGES: { value: OscRange; text: string }[] = [
 
 export function VcoBank() {
   const vco = useSynthStore((s) => s.patch.vco);
+  const pwm = useSynthStore((s) => s.patch.pwm);
   const updateVco = useSynthStore((s) => s.updateVco);
+  const update = useSynthStore((s) => s.update);
 
   return (
     <section className="card panel panel--wide" aria-label="Oscillator bank">
-      <h2 className="panel__title">Oscillators</h2>
+      <div className="panel__row" style={{ justifyContent: "space-between" }}>
+        <h2 className="panel__title">Oscillators</h2>
+        {/* Shared PW/PWM (Mono/Poly-style): applies to pulse waveforms; MG1 is the mod source */}
+        <div className="panel__sliders">
+          <Slider label="PW" min={-0.35} max={0.35} value={pwm.widthOffset} format={(v) => `${v > 0 ? "+" : ""}${Math.round(v * 100)}%`} onChange={(widthOffset) => update("pwm", { widthOffset })} />
+          <Slider label="PWM" min={0} max={1} value={pwm.depth} format={(v) => `${Math.round(v * 100)}%`} onChange={(depth) => update("pwm", { depth })} />
+        </div>
+      </div>
       <div className="vco-bank">
         {vco.map((v, i) => (
           <div key={i} className={`vco${v.enabled ? "" : " vco--off"}`}>

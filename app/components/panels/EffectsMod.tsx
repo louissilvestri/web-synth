@@ -38,6 +38,7 @@ export function EffectsPanel() {
       <div className="panel__sliders">
         <Slider label="X-Mod" min={0} max={1} value={fx.xmod} format={fmtPercent} onChange={(xmod) => update("effects", { xmod })} />
         <Slider label="Mod amt" min={0} max={1} value={fx.modDepth} format={fmtPercent} onChange={(modDepth) => update("effects", { modDepth })} />
+        <Slider label="Interval" min={0} max={24} step={1} value={fx.intervalSemitones} format={(v) => `+${Math.round(v)} st`} onChange={(intervalSemitones) => update("effects", { intervalSemitones })} />
       </div>
     </section>
   );
@@ -66,7 +67,6 @@ export function Mg1Panel() {
         <Slider label="Rate" min={0.05} max={30} log value={mg1.rateHz} format={fmtHz} onChange={(rateHz) => update("mg1", { rateHz })} />
         <Slider label="Pitch" min={0} max={100} value={mg1.toPitchCents} format={(v) => `${Math.round(v)}¢`} onChange={(toPitchCents) => update("mg1", { toPitchCents })} />
         <Slider label="Filter" min={0} max={1} value={mg1.toCutoff} format={fmtPercent} onChange={(toCutoff) => update("mg1", { toCutoff })} />
-        <Slider label="PWM" min={0} max={1} value={mg1.toPw} format={fmtPercent} onChange={(toPw) => update("mg1", { toPw })} />
       </div>
     </section>
   );
