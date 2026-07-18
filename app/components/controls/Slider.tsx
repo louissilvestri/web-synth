@@ -27,21 +27,39 @@ export function Slider({
   ...scale
 }: SliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
+  // Drag perf: measure the track once per drag (getBoundingClientRect on
+  // every pointermove forces a layout pass) and coalesce moves to one
+  // update per animation frame.
+  const dragRect = useRef<DOMRect | null>(null);
+  const pendingY = useRef<number | null>(null);
+  const rafId = useRef(0);
 
   const setFromPointer = useCallback(
     (clientY: number) => {
-      const el = trackRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
+      const r = dragRect.current;
+      if (!r) return;
       onChange(normToValue(1 - (clientY - r.top) / r.height, scale));
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [onChange, scale.min, scale.max, scale.log, scale.step],
   );
 
+  const queueFromPointer = useCallback(
+    (clientY: number) => {
+      pendingY.current = clientY;
+      if (rafId.current) return;
+      rafId.current = requestAnimationFrame(() => {
+        rafId.current = 0;
+        if (pendingY.current !== null) setFromPointer(pendingY.current);
+      });
+    },
+    [setFromPointer],
+  );
+
   const onPointerDown = (e: React.PointerEvent) => {
     if (disabled) return;
     e.currentTarget.setPointerCapture(e.pointerId);
+    dragRect.current = trackRef.current?.getBoundingClientRect() ?? null;
     setFromPointer(e.clientY);
   };
 
@@ -75,7 +93,7 @@ export function Slider({
         aria-valuetext={text}
         aria-disabled={disabled}
         onPointerDown={onPointerDown}
-        onPointerMove={(e) => e.buttons === 1 && !disabled && setFromPointer(e.clientY)}
+        onPointerMove={(e) => e.buttons === 1 && !disabled && queueFromPointer(e.clientY)}
         onKeyDown={onKeyDown}
         onWheel={(e) => {
           if (disabled) return;
