@@ -16,8 +16,13 @@
 
 ## Branch strategy
 
-`main` = v1 until the M5 merge (tag `v1.0`). All v2 work lands on the **`v2`** branch via
-feature-branch PRs (`m1-engine`, `m2-control-surface`, …). CI runs on pushes/PRs to both.
+`main` = v1 until the release merge (tag `v1.0`). All v2 work lands on the **`v2`** branch
+via feature-branch PRs (`m1-engine`, `m2-control-surface`, …). CI runs on pushes/PRs to both.
+
+**`v2` is the repo default branch during development** (set 2026-07-18): silences the
+"Create PR vs main" nudges, visitors land on active code, and `Closes #N` keywords in PR
+merges auto-close issues (they only fire on default-branch merges). **At M6: flip the
+default back to `main`** before the release merge.
 
 ## CI hard-won notes
 
