@@ -127,9 +127,17 @@ export class EngineCore {
           ? UNISON_SPREAD[i] * p.keyAssign.unisonDetuneCents
           : 0;
 
+        // Effects section: VCO1 (and VCO3 in double mode) are masters.
+        const isMaster =
+          i === 0 || (p.effects.topology === "double" && i === 2);
+        const fxEngaged = p.effects.sync || p.effects.xmod > 0;
+
         const semis =
           RANGE_SEMITONES[vp.range] +
           vp.semitones +
+          // Moog-style sync interval: slaves ride above the master while the
+          // effects section is engaged — the offset ratio is the sync timbre.
+          (!isMaster && fxEngaged ? p.effects.intervalSemitones : 0) +
           (vp.fineCents + spread + this.drifts[i].tick() + mg * p.mg1.toPitchCents) /
             100 +
           p.master.tuneCents / 100;
@@ -139,9 +147,6 @@ export class EngineCore {
           ? this.glides[i].tick(targetPitch, p.glide.timeS)
           : (this.glides[i].set(targetPitch), targetPitch);
 
-        // Effects section: VCO1 (and VCO3 in double mode) are masters.
-        const isMaster =
-          i === 0 || (p.effects.topology === "double" && i === 2);
         const masterIdx = p.effects.topology === "double" && i >= 2 ? 2 : 0;
         const master = isMaster ? undefined : this.vcos[masterIdx];
 
@@ -151,7 +156,7 @@ export class EngineCore {
           freq *= 2 ** (this.lastOut[masterIdx] * p.effects.xmod * fxSweep * 3);
         }
 
-        const pwm = p.mg1.toPw * 0.35 * mg;
+        const pwm = p.pwm.widthOffset + p.pwm.depth * 0.35 * mg;
         const sample = this.vcos[i].tick(
           freq,
           vp.wave,

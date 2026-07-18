@@ -78,6 +78,30 @@ describe("EngineCore", () => {
     expect(rms(after)).toBeGreaterThan(0.01); // held note keeps sounding
   });
 
+  it("sync interval and PWM render clean bounded audio", () => {
+    const core = new EngineCore(SR);
+    const p = defaultPatch();
+    p.vco.forEach((v) => {
+      v.enabled = true;
+      v.wave = "square";
+    });
+    p.effects.sync = true;
+    p.effects.intervalSemitones = 7;
+    p.pwm.widthOffset = 0.3;
+    p.pwm.depth = 1;
+    p.mg1.rateHz = 6;
+    core.setPatch(p);
+    core.noteOn(48, 1);
+    const buf = render(core, 0.4);
+    let sum = 0;
+    for (const v of buf) {
+      expect(Number.isFinite(v)).toBe(true);
+      expect(Math.abs(v)).toBeLessThanOrEqual(1);
+      sum += v * v;
+    }
+    expect(Math.sqrt(sum / buf.length)).toBeGreaterThan(0.01);
+  });
+
   it("A-440 reference tone sounds with no notes held", () => {
     const core = new EngineCore(SR);
     const p = defaultPatch();

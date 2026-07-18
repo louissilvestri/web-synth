@@ -83,6 +83,19 @@ export interface EffectsPatch {
   /** What sweeps the effect amount — the signature MP-4 move. */
   modSource: FxModSource;
   modDepth: number; // 0..1
+  /**
+   * Sync interval (Moog-style): semitone offset applied to slave VCOs while
+   * sync/X-Mod is engaged — the slave-to-master ratio IS the sync timbre.
+   */
+  intervalSemitones: number; // 0..24
+}
+
+/** Shared pulse-width controls (Mono/Poly-style: one PW + PWM for the bank). */
+export interface PwmPatch {
+  /** Offset from each pulse waveform's base width, ±0.35. */
+  widthOffset: number;
+  /** MG1 → width modulation depth, 0..1. */
+  depth: number;
 }
 
 export interface Mg1Patch {
@@ -90,7 +103,6 @@ export interface Mg1Patch {
   rateHz: number;
   toPitchCents: number; // vibrato depth at full mod
   toCutoff: number; // 0..1 → octaves of cutoff sweep
-  toPw: number; // 0..1 PWM depth
 }
 
 export interface MasterPatch {
@@ -109,6 +121,7 @@ export interface Patch {
   keyAssign: KeyAssignPatch;
   glide: GlidePatch;
   effects: EffectsPatch;
+  pwm: PwmPatch;
   mg1: Mg1Patch;
   master: MasterPatch;
 }
@@ -134,8 +147,16 @@ export function defaultPatch(): Patch {
     eg2: { attackS: 0.003, decayS: 0.25, sustain: 0.8, releaseS: 0.25 },
     keyAssign: { mode: "poly", trigger: "multiple", unisonDetuneCents: 8, chord: [0, 4, 7, 12] },
     glide: { on: false, timeS: 0.06 },
-    effects: { sync: false, xmod: 0, topology: "single", modSource: "off", modDepth: 0 },
-    mg1: { wave: "triangle", rateHz: 5, toPitchCents: 0, toCutoff: 0, toPw: 0 },
+    effects: {
+      sync: false,
+      xmod: 0,
+      topology: "single",
+      modSource: "off",
+      modDepth: 0,
+      intervalSemitones: 0,
+    },
+    pwm: { widthOffset: 0, depth: 0 },
+    mg1: { wave: "triangle", rateHz: 5, toPitchCents: 0, toCutoff: 0 },
     master: { tuneCents: 0, volume: 0.75, a440: false },
   };
 }

@@ -98,6 +98,7 @@ export class Oscillator {
  */
 export class Drift {
   private value = 0;
+  private countdown = 0;
 
   constructor(
     private readonly sampleRate: number,
@@ -105,8 +106,11 @@ export class Drift {
     private readonly rate = 0.5, // walks per second, roughly
   ) {}
 
+  /** Decimated: drift moves far below audio rate, so walk once per 32 samples. */
   tick(): number {
-    const step = (Math.random() - 0.5) * ((2 * this.rate) / this.sampleRate);
+    if (this.countdown-- > 0) return this.value;
+    this.countdown = 31;
+    const step = (Math.random() - 0.5) * ((64 * this.rate) / this.sampleRate);
     this.value += step * this.maxCents * 40;
     if (this.value > this.maxCents) this.value = this.maxCents;
     else if (this.value < -this.maxCents) this.value = -this.maxCents;

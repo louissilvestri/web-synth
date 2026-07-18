@@ -11,6 +11,7 @@ import { defaultPatch } from "../core/patch";
 export class AudioEngineHost {
   private ctx: AudioContext | null = null;
   private node: AudioWorkletNode | null = null;
+  private analyserNode: AnalyserNode | null = null;
   private patch: Patch = defaultPatch();
 
   get running(): boolean {
@@ -31,9 +32,23 @@ export class AudioEngineHost {
       numberOfInputs: 0,
       outputChannelCount: [2],
     });
-    this.node.connect(this.ctx.destination);
+    // Meter tap: worklet → analyser → destination (scope/spectrum/VU read here).
+    this.analyserNode = this.ctx.createAnalyser();
+    this.analyserNode.fftSize = 2048;
+    this.analyserNode.smoothingTimeConstant = 0.6;
+    this.node.connect(this.analyserNode);
+    this.analyserNode.connect(this.ctx.destination);
     await this.ctx.resume();
     this.send({ type: "setPatch", patch: this.patch });
+    if (process.env.NODE_ENV === "development") {
+      // Dev-only debug handle for console poking and automated verification.
+      (window as unknown as Record<string, unknown>).__wsEngine = this;
+    }
+  }
+
+  /** Meter tap for visualizations; null until init(). */
+  get analyser(): AnalyserNode | null {
+    return this.analyserNode;
   }
 
   private send(message: EngineMessage): void {
