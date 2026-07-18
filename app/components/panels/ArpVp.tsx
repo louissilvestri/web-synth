@@ -89,7 +89,7 @@ export function VirtualPatchPanel() {
   };
 
   return (
-    <section className="card panel panel--wide" aria-label="Virtual patch modulation matrix">
+    <section className="card panel" aria-label="Virtual patch modulation matrix">
       <h2 className="panel__title">Virtual patch</h2>
       <div className="vp">
         {vp.map((slot, i) => (

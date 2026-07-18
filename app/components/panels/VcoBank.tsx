@@ -32,7 +32,7 @@ export function VcoBank() {
   const update = useSynthStore((s) => s.update);
 
   return (
-    <section className="card panel panel--wide" aria-label="Oscillator bank">
+    <section className="card panel" aria-label="Oscillator bank">
       <div className="panel__row" style={{ justifyContent: "space-between" }}>
         <h2 className="panel__title">Oscillators</h2>
         {/* Shared PW/PWM (Mono/Poly-style): applies to pulse waveforms; MG1 is the mod source */}
