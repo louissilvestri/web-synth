@@ -37,6 +37,15 @@ class ParaphonicProcessor extends AudioWorkletProcessor {
         case "allNotesOff":
           this.core.allNotesOff();
           break;
+        case "pitchBend":
+          this.core.setPitchBend(m.value);
+          break;
+        case "modWheel":
+          this.core.setModWheel(m.value);
+          break;
+        case "sustain":
+          this.core.setSustain(m.on);
+          break;
       }
     };
   }

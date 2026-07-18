@@ -4,11 +4,13 @@ import { useEffect } from "react";
 import { useSynthStore } from "../state/store";
 import { Keyboard } from "./Keyboard";
 import { Meters } from "./Meters";
+import { ArpPanel, VirtualPatchPanel } from "./panels/ArpVp";
 import { EffectsPanel, Mg1Panel } from "./panels/EffectsMod";
 import { EnvelopesPanel } from "./panels/Envelopes";
 import { FilterPanel, MixerPanel } from "./panels/MixerFilter";
 import { KeyAssignPanel, MasterPanel } from "./panels/Performance";
 import { VcoBank } from "./panels/VcoBank";
+import { MidiPicker, Wheels } from "./Wheels";
 
 /**
  * The instrument, laid out in signal-flow order (layout order = workflow
@@ -30,10 +32,16 @@ export function Synth() {
         <EnvelopesPanel />
         <EffectsPanel />
         <Mg1Panel />
+        <ArpPanel />
         <MasterPanel />
         <Meters />
+        <VirtualPatchPanel />
       </div>
-      <Keyboard />
+      <div className="perf-row">
+        <Wheels />
+        <Keyboard />
+        <MidiPicker />
+      </div>
     </div>
   );
 }

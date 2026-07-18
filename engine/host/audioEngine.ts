@@ -67,6 +67,18 @@ export class AudioEngineHost {
     this.send({ type: "allNotesOff" });
   }
 
+  pitchBend(value: number): void {
+    this.send({ type: "pitchBend", value });
+  }
+
+  modWheel(value: number): void {
+    this.send({ type: "modWheel", value });
+  }
+
+  sustain(on: boolean): void {
+    this.send({ type: "sustain", on });
+  }
+
   setPatch(patch: Patch): void {
     this.patch = patch;
     this.send({ type: "setPatch", patch });

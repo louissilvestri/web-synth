@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useSynthStore } from "../../state/store";
 import { Segmented, Toggle } from "../controls/Segmented";
 import { Slider } from "../controls/Slider";
@@ -11,6 +12,8 @@ export function KeyAssignPanel() {
   const glide = useSynthStore((s) => s.patch.glide);
   const update = useSynthStore((s) => s.update);
   const allNotesOff = useSynthStore((s) => s.allNotesOff);
+  const captureChord = useSynthStore((s) => s.captureChord);
+  const [captureMsg, setCaptureMsg] = useState<"ok" | "need" | null>(null);
 
   return (
     <section className="card panel" aria-label="Key assign">
@@ -40,7 +43,26 @@ export function KeyAssignPanel() {
       />
       <div className="panel__row">
         <Toggle label="Glide" value={glide.on} onChange={(on) => update("glide", { on })} />
+        <button
+          type="button"
+          className="btn btn--ghost"
+          onClick={() => {
+            const ok = captureChord();
+            setCaptureMsg(ok ? "ok" : "need");
+            setTimeout(() => setCaptureMsg(null), 2500);
+          }}
+          title="Hold a chord (keys or MIDI), then click to store it for Chord mode"
+        >
+          Capture chord
+        </button>
       </div>
+      {captureMsg && (
+        <p className="u-mono" style={{ margin: 0, fontSize: "var(--fs-xs)", color: captureMsg === "ok" ? "var(--ok)" : "var(--alert)" }}>
+          {captureMsg === "ok"
+            ? `✓ stored [${ka.chord.join(", ")}]`
+            : "Hold at least 2 notes while clicking"}
+        </p>
+      )}
       <div className="panel__sliders">
         <Slider label="Detune" min={0} max={30} value={ka.unisonDetuneCents} format={fmtSigned("¢")} onChange={(unisonDetuneCents) => update("keyAssign", { unisonDetuneCents })} />
         <Slider label="Glide" min={0.005} max={2} log value={glide.timeS} format={fmtSeconds} onChange={(timeS) => update("glide", { timeS })} />

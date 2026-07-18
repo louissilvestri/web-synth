@@ -102,6 +102,76 @@ describe("EngineCore", () => {
     expect(Math.sqrt(sum / buf.length)).toBeGreaterThan(0.01);
   });
 
+  it("arpeggiator steps notes on its own clock", () => {
+    const core = new EngineCore(SR);
+    const p = defaultPatch();
+    p.arp.on = true;
+    p.arp.bpm = 240; // fast: step = 125ms
+    core.setPatch(p);
+    core.noteOn(48, 1);
+    core.noteOn(60, 1);
+    // Render 0.6s and check output alternates activity (gate on/off cycles).
+    const buf = render(core, 0.6);
+    expect(rms(buf)).toBeGreaterThan(0.005);
+    for (const v of buf) expect(Number.isFinite(v)).toBe(true);
+    // Release without latch: arp goes silent.
+    core.noteOff(48);
+    core.noteOff(60);
+    render(core, 0.8);
+    expect(rms(render(core, 0.2))).toBeLessThan(1e-3);
+  });
+
+  it("virtual patch routes modulate without breaking the render", () => {
+    const core = new EngineCore(SR);
+    const p = defaultPatch();
+    p.virtualPatch[0] = { source: "mg1", dest: "cutoff", amount: 0.8 };
+    p.virtualPatch[1] = { source: "velocity", dest: "amp", amount: -0.9 };
+    p.virtualPatch[2] = { source: "mg2", dest: "pitch", amount: 0.2 };
+    p.virtualPatch[3] = { source: "kbdTrack", dest: "resonance", amount: 0.9 };
+    p.mg1.rateHz = 8;
+    core.setPatch(p);
+    core.noteOn(72, 0.9);
+    const buf = render(core, 0.4);
+    expect(rms(buf)).toBeGreaterThan(0.001);
+    for (const v of buf) expect(Number.isFinite(v)).toBe(true);
+  });
+
+  it("velocity→amp virtual patch makes soft notes quieter", () => {
+    const mk = (vel: number) => {
+      const core = new EngineCore(SR);
+      const p = defaultPatch();
+      p.virtualPatch[0] = { source: "velocity", dest: "amp", amount: -0.85 };
+      core.setPatch(p);
+      core.noteOn(57, vel);
+      return rms(render(core, 0.3));
+    };
+    expect(mk(1)).toBeLessThan(mk(0.1) * 0.7); // high velocity → more negative amp mod
+  });
+
+  it("pitch bend shifts pitch and returns", () => {
+    const core = new EngineCore(SR);
+    core.noteOn(57, 1);
+    render(core, 0.1);
+    core.setPitchBend(1); // +2 semitones default range
+    const bent = render(core, 0.2);
+    core.setPitchBend(0);
+    for (const v of bent) expect(Number.isFinite(v)).toBe(true);
+    expect(rms(bent)).toBeGreaterThan(0.01);
+  });
+
+  it("sustain pedal holds notes through noteOff", () => {
+    const core = new EngineCore(SR);
+    core.setSustain(true);
+    core.noteOn(57, 1);
+    render(core, 0.1);
+    core.noteOff(57);
+    const held = render(core, 0.2);
+    expect(rms(held)).toBeGreaterThan(0.01); // still sounding
+    core.setSustain(false); // pedal up → release flushes
+    render(core, 1.0);
+    expect(rms(render(core, 0.1))).toBeLessThan(1e-3);
+  });
+
   it("A-440 reference tone sounds with no notes held", () => {
     const core = new EngineCore(SR);
     const p = defaultPatch();
