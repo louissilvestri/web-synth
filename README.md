@@ -12,10 +12,13 @@ filter, dual contours) driven by the performance brain of a **Korg Mono/Poly**
 (key-assign modes, arpeggiator, chord memory, sync + cross-modulation).
 
 > **Status: v2 ground-up rewrite in progress on the [`v2` branch](https://github.com/louissilvestri/web-synth/tree/v2)** —
-> currently at **M0 (scaffold)**. The plan lives in [docs/PLAN.md](docs/PLAN.md);
+> currently at **M2 (control surface)**. The build steps live in
+> [docs/PLAN.md](docs/PLAN.md), with reference docs alongside it
+> ([features](docs/FEATURES.md) · [architecture](docs/ARCHITECTURE.md) ·
+> [design](docs/DESIGN.md) · [decisions](docs/DECISIONS.md) · [repo ops](docs/REPO.md));
 > progress is tracked via [milestones](https://github.com/louissilvestri/web-synth/milestones)
-> and the project board. The old v1 demo is preserved at the
-> [`v1.0` tag](https://github.com/louissilvestri/web-synth/tree/v1.0).
+> and the [project board](https://github.com/users/louissilvestri/projects/1). The old v1
+> demo is preserved at the [`v1.0` tag](https://github.com/louissilvestri/web-synth/tree/v1.0).
 
 ## Architecture
 
