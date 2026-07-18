@@ -14,7 +14,10 @@
   "license": "MIT",
   "scripts": {
     "dev": "next dev",
+    "predev": "npm run build:worklet",
     "build": "next build",
+    "prebuild": "npm run build:worklet",
+    "build:worklet": "node scripts/build-worklet.mjs",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -29,6 +32,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "esbuild": "^0.28.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "typescript": "^5",

@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# generated worklet bundle (built by scripts/build-worklet.mjs)
+/public/worklet/

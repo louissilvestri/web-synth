@@ -29,10 +29,10 @@ flowchart LR
   KBD[KBD / MIDI] --> KA[Key assign<br/>Mono · Poly · Share · Chord]
   KA --> V1[VCO 1] & V2[VCO 2] & V3[VCO 3] & V4[VCO 4]
   V1 -.sync / x-mod.-> V2 & V3 & V4
-  V1 & V2 & V3 & V4 --> MIX[Mixer + Noise + Feedback]
+  V1 & V2 & V3 & V4 --> VCA[VCA ×4 · EG2 clones]
+  VCA --> MIX[Mixer + Noise + Feedback]
   MIX --> VCF[Ladder VCF 24 dB]
-  VCF --> VCA[VCA ×4]
-  VCA --> FX[FX: delay · chorus · phaser]
+  VCF --> FX[FX: delay · chorus · phaser]
   FX --> LIM[Limiter] --> OUT[Output]
   EG1[EG 1 · filter ADSR] -.-> VCF
   EG2[EG 2 · amp ADSR] -.-> VCA
