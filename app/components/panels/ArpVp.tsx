@@ -5,6 +5,7 @@ import { useSynthStore } from "../../state/store";
 import { Segmented, Toggle } from "../controls/Segmented";
 import { Slider } from "../controls/Slider";
 import { fmtHz, fmtPercent } from "../controls/sliderMath";
+import { Sortable } from "../controls/Sortable";
 
 export function ArpPanel() {
   const arp = useSynthStore((s) => s.patch.arp);
@@ -15,42 +16,72 @@ export function ArpPanel() {
   return (
     <section className="card panel" aria-label="Arpeggiator">
       <h2 className="panel__title">Arpeggiator</h2>
-      <div className="panel__row">
-        <Toggle
-          label="Arp"
-          value={arp.on}
-          onChange={(on) => {
-            allNotesOff();
-            update("arp", { on });
-          }}
-        />
-        <Toggle label="Latch" value={arp.latch} onChange={(latch) => update("arp", { latch })} />
-      </div>
-      <Segmented
-        label="Arp mode"
-        options={[
-          { value: "up", text: "Up" },
-          { value: "down", text: "Down" },
-          { value: "updown", text: "Up·Dn" },
+      <Sortable
+        scope="arp"
+        className="panel__blocks"
+        items={[
+          {
+            id: "toggles",
+            el: (
+              <div className="panel__row">
+                <Toggle
+                  label="Arp"
+                  value={arp.on}
+                  onChange={(on) => {
+                    allNotesOff();
+                    update("arp", { on });
+                  }}
+                />
+                <Toggle label="Latch" value={arp.latch} onChange={(latch) => update("arp", { latch })} />
+              </div>
+            ),
+          },
+          {
+            id: "mode",
+            el: (
+              <Segmented
+                label="Arp mode"
+                options={[
+                  { value: "up", text: "Up" },
+                  { value: "down", text: "Down" },
+                  { value: "updown", text: "Up·Dn" },
+                ]}
+                value={arp.mode}
+                onChange={(mode) => update("arp", { mode })}
+              />
+            ),
+          },
+          {
+            id: "range",
+            el: (
+              <Segmented
+                label="Arp range"
+                options={[
+                  { value: 1, text: "1 oct" },
+                  { value: 2, text: "2 oct" },
+                  { value: 3, text: "3 oct" },
+                ]}
+                value={arp.rangeOct}
+                onChange={(rangeOct) => update("arp", { rangeOct: rangeOct as 1 | 2 | 3 })}
+              />
+            ),
+          },
+          {
+            id: "sliders",
+            el: (
+              <Sortable
+                scope="arp.sliders"
+                className="panel__sliders"
+                items={[
+                  { id: "bpm", el: <Slider label="BPM" min={40} max={240} step={1} value={arp.bpm} format={(v) => `${Math.round(v)}`} onChange={(bpm) => update("arp", { bpm })} /> },
+                  { id: "gate", el: <Slider label="Gate" min={0.1} max={0.95} value={arp.gate} format={fmtPercent} onChange={(gate) => update("arp", { gate })} /> },
+                  { id: "mg2", el: <Slider label="MG2" min={0.05} max={30} log value={mg2.rateHz} format={fmtHz} onChange={(rateHz) => update("mg2", { rateHz })} /> },
+                ]}
+              />
+            ),
+          },
         ]}
-        value={arp.mode}
-        onChange={(mode) => update("arp", { mode })}
       />
-      <Segmented
-        label="Arp range"
-        options={[
-          { value: 1, text: "1 oct" },
-          { value: 2, text: "2 oct" },
-          { value: 3, text: "3 oct" },
-        ]}
-        value={arp.rangeOct}
-        onChange={(rangeOct) => update("arp", { rangeOct: rangeOct as 1 | 2 | 3 })}
-      />
-      <div className="panel__sliders">
-        <Slider label="BPM" min={40} max={240} step={1} value={arp.bpm} format={(v) => `${Math.round(v)}`} onChange={(bpm) => update("arp", { bpm })} />
-        <Slider label="Gate" min={0.1} max={0.95} value={arp.gate} format={fmtPercent} onChange={(gate) => update("arp", { gate })} />
-        <Slider label="MG2" min={0.05} max={30} log value={mg2.rateHz} format={fmtHz} onChange={(rateHz) => update("mg2", { rateHz })} />
-      </div>
     </section>
   );
 }

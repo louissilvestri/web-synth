@@ -46,12 +46,23 @@
 .pframe__btn.is-active { color: var(--accent); }
 .pframe__btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .rail__sub { display: flex; flex-direction: column; gap: 2px; padding-left: 10px; }
+
+/* ---- sortable controls (Arrange mode) ---- */
+.ctl { position: relative; display: flex; flex-direction: column; align-items: stretch;
+  outline: 1px dashed color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 2px; border-radius: calc(var(--radius) - 5px); cursor: grab; }
+.ctl__grip { border: none; background: none; color: var(--muted); cursor: grab;
+  font-size: var(--fs-xs); padding: 0 2px; align-self: center; line-height: 1; }
+.ctl__grip:hover { color: var(--accent); }
+.ctl__grip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .panel__title { font-family: var(--font-display); font-weight: var(--display-weight);
   font-size: var(--fs-sm); letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--muted); margin: 0; }
 .panel__sub { font-size: var(--fs-xs); color: var(--muted); margin: 0 0 4px;
   font-family: var(--font-display); font-weight: var(--display-weight); }
 .panel__sliders { display: flex; gap: calc(var(--gap) * 2); align-items: flex-end; }
+.panel__blocks { display: flex; flex-direction: column; gap: calc(var(--gap) * 2);
+  align-items: flex-start; }
 .panel__row { display: flex; gap: calc(var(--gap) * 2); align-items: center; flex-wrap: wrap; }
 .panel__error { color: var(--alert); font-size: var(--fs-sm); margin: 0; }
 

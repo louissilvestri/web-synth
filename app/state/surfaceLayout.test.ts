@@ -46,6 +46,38 @@ describe("layout store", () => {
     expect(s.wide).toEqual(DEFAULT_LAYOUT.wide);
   });
 
+  it("dropping on the near half of a neighbor still acts (no-op flip)", () => {
+    const { reorder } = useLayoutStore.getState();
+    const [a, b] = DEFAULT_LAYOUT.order;
+    // a dropped on b's left half = "before b" = where a already is → flips to after
+    reorder(a, b, true);
+    expect(useLayoutStore.getState().order.slice(0, 2)).toEqual([b, a]);
+  });
+
+  it("control orders: reorderCtl/moveCtl persist per scope with no-op flip", () => {
+    const ids = ["cutoff", "emphasis", "contour"];
+    const { reorderCtl, moveCtl } = useLayoutStore.getState();
+    // near-half drop on the immediate right neighbor flips to a real move
+    reorderCtl("filter.sliders", ids, "cutoff", "emphasis", true);
+    expect(useLayoutStore.getState().ctlOrders["filter.sliders"]).toEqual([
+      "emphasis",
+      "cutoff",
+      "contour",
+    ]);
+    moveCtl("filter.sliders", ids, "contour", -1);
+    expect(useLayoutStore.getState().ctlOrders["filter.sliders"]).toEqual([
+      "emphasis",
+      "contour",
+      "cutoff",
+    ]);
+  });
+
+  it("applyOrder appends ids unknown to a stale save", async () => {
+    const { applyOrder } = await import("./surfaceLayout");
+    expect(applyOrder(["a", "b", "new"], ["b", "a"])).toEqual(["b", "a", "new"]);
+    expect(applyOrder(["a", "b"], undefined)).toEqual(["a", "b"]);
+  });
+
   it("toJson() round-trips the arrangement", () => {
     const { reorder, toJson } = useLayoutStore.getState();
     reorder("arp", "keyAssign", true);
