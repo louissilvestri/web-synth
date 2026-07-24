@@ -83,7 +83,7 @@ describe("EngineCore", () => {
     const p = defaultPatch();
     p.vco.forEach((v) => {
       v.enabled = true;
-      v.wave = "square";
+      v.wave = "pulse";
     });
     p.effects.sync = true;
     p.effects.intervalSemitones = 7;

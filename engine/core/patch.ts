@@ -10,9 +10,13 @@ export type Waveform =
   | "triangle"
   | "shark" // Minimoog triangle-saw hybrid
   | "saw"
-  | "square"
-  | "pulseWide" // ~1/3 duty
-  | "pulseNarrow"; // ~1/10 duty
+  /**
+   * One pulse waveform, 50% base width, shaped continuously by the per-VCO
+   * PW slider (±0.4 → 10%..90% duty). Replaces the Model D's three fixed
+   * rectangles (square / wide / narrow) — those existed because the hardware
+   * had no PW control; we do. Legacy patches migrate in mergeSavedPatch.
+   */
+  | "pulse";
 
 export type KeyAssignMode = "mono" | "poly" | "share" | "chord";
 export type TriggerMode = "single" | "multiple";
@@ -34,7 +38,7 @@ export interface VcoPatch {
   level: number;
   /** VCO 4 only (Model D Osc-3 trick): false = free-running, ignores the keyboard. */
   keyboardTrack: boolean;
-  /** Pulse-width offset from the waveform's base width, ±0.35. */
+  /** Pulse-width offset from the 50% base, ±0.4 (10%..90% duty). */
   pw: number;
   /** MG1 → width modulation depth, 0..1. */
   pwmDepth: number;

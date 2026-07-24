@@ -23,6 +23,24 @@ describe("working-patch migration", () => {
     expect(p.vco[0].pwSyncTo).toBeNull(); // new per-VCO keys defaulted
   });
 
+  it("migrates legacy fixed-width rectangles to pulse + PW offset", () => {
+    const p = mergeSavedPatch({
+      vco: [
+        { wave: "square", pw: 0 },
+        { wave: "pulseWide" },
+        { wave: "pulseNarrow" },
+        { wave: "saw" },
+      ] as unknown as Patch["vco"],
+    });
+    expect(p.vco[0].wave).toBe("pulse");
+    expect(p.vco[0].pw).toBe(0); // square = 50% = pulse at PW 0
+    expect(p.vco[1].wave).toBe("pulse");
+    expect(p.vco[1].pw).toBeCloseTo(1 / 3 - 0.5, 5); // old wide ≈ −17%
+    expect(p.vco[2].wave).toBe("pulse");
+    expect(p.vco[2].pw).toBeCloseTo(-0.4, 5); // old narrow clamps to −40%
+    expect(p.vco[3].wave).toBe("saw"); // non-pulse untouched
+  });
+
   it("drops modules that no longer exist in the schema (old shared pwm)", () => {
     const p = mergeSavedPatch({
       pwm: { widthOffset: 0.2, depth: 1 },
@@ -51,9 +69,9 @@ describe("working-patch migration", () => {
 
   it("merges per-VCO overrides while keeping unspecified VCOs at defaults", () => {
     const p = mergeSavedPatch({
-      vco: [{ wave: "square" }] as unknown as Patch["vco"],
+      vco: [{ wave: "shark" }] as unknown as Patch["vco"],
     });
-    expect(p.vco[0].wave).toBe("square");
+    expect(p.vco[0].wave).toBe("shark");
     expect(p.vco[0].level).toBe(defaultPatch().vco[0].level);
     expect(p.vco[2]).toEqual(defaultPatch().vco[2]);
   });

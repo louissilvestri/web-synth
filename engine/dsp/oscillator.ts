@@ -22,11 +22,6 @@ function polyBlep(t: number, dt: number): number {
   return 0;
 }
 
-const PULSE_WIDTH: Record<string, number> = {
-  square: 0.5,
-  pulseWide: 1 / 3,
-  pulseNarrow: 0.1,
-};
 
 export class Oscillator {
   /** Phase 0..1. */
@@ -60,11 +55,10 @@ export class Oscillator {
       case "saw":
         v = 2 * t - 1 - polyBlep(t, dt);
         break;
-      case "square":
-      case "pulseWide":
-      case "pulseNarrow": {
-        let pw = PULSE_WIDTH[wave] + pwOffset;
-        pw = Math.min(0.9, Math.max(0.05, pw));
+      case "pulse": {
+        // 50% base width, shaped by the PW/PWM offset; clamped clear of the
+        // degenerate edges where the pulse collapses to DC.
+        const pw = Math.min(0.95, Math.max(0.05, 0.5 + pwOffset));
         v = (t < pw ? 1 : -1) + polyBlep(t, dt) - polyBlep((t - pw + 1) % 1, dt);
         break;
       }

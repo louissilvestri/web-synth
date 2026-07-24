@@ -12,9 +12,7 @@ const WAVES: { value: Waveform; text: string }[] = [
   { value: "triangle", text: "▵" },
   { value: "shark", text: "◺" },
   { value: "saw", text: "◿" },
-  { value: "square", text: "⊓" },
-  { value: "pulseWide", text: "⨅" },
-  { value: "pulseNarrow", text: "∏" },
+  { value: "pulse", text: "⊓" },
 ];
 
 const RANGES: { value: OscRange; text: string }[] = [
@@ -118,8 +116,8 @@ export function VcoBank() {
                               <div className="vco__pw">
                                 <Slider
                                   label="PW"
-                                  min={-0.35}
-                                  max={0.35}
+                                  min={-0.4}
+                                  max={0.4}
                                   value={pwShown}
                                   format={(x) => `${x > 0 ? "+" : ""}${Math.round(x * 100)}%`}
                                   onChange={(pw) => updateVco(i, { pw })}
