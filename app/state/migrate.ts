@@ -13,10 +13,16 @@ const LEGACY_PULSE_OFFSET: Record<string, number> = {
 };
 
 function migrateVco(v: VcoPatch & { wave: string }): VcoPatch {
-  const legacy = LEGACY_PULSE_OFFSET[v.wave];
-  if (legacy === undefined) return v;
-  const pw = Math.min(0.4, Math.max(-0.4, (v.pw ?? 0) + legacy));
-  return { ...v, wave: "pulse", pw };
+  // Drop the retired PWM fields (PWM now lives in the Virtual Patch).
+  const clean = { ...v } as VcoPatch & { pwmDepth?: number; pwmSyncTo?: number | null };
+  delete clean.pwmDepth;
+  delete clean.pwmSyncTo;
+  const legacy = LEGACY_PULSE_OFFSET[clean.wave];
+  if (legacy !== undefined) {
+    clean.wave = "pulse";
+    clean.pw = Math.min(0.4, Math.max(-0.4, (clean.pw ?? 0) + legacy));
+  }
+  return clean;
 }
 
 /**

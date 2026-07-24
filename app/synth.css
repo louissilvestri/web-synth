@@ -145,6 +145,14 @@
   background: var(--surface-2); border: var(--bw) solid var(--border);
   border-radius: calc(var(--radius) - 5px); padding: 5px 7px; width: 100%; cursor: pointer; }
 .vp__select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.vp__targets { display: flex; gap: 3px; }
+.vp__target { flex: 1; border: var(--bw) solid var(--border); background: var(--surface-2);
+  color: var(--muted); border-radius: calc(var(--radius) - 6px); padding: 4px 0;
+  font-family: var(--font-mono); font-size: var(--fs-xs); cursor: pointer; min-width: 22px;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease); }
+.vp__target:hover { color: var(--text); }
+.vp__target.is-on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.vp__target:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* ---- performance row: wheels + keyboard + midi ---- */
 .perf-row { display: flex; gap: calc(var(--gap) * 3); align-items: stretch; }

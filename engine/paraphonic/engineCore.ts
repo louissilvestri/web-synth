@@ -1,5 +1,5 @@
 import { midiNoteToFrequency, RANGE_SEMITONES } from "../core/pitch";
-import type { Patch, VpDest } from "../core/patch";
+import type { Patch } from "../core/patch";
 import { defaultPatch } from "../core/patch";
 import { Adsr } from "../dsp/adsr";
 import { LadderFilter } from "../dsp/ladder";
@@ -26,28 +26,25 @@ import { KeyAssign } from "./keyAssign";
 const UNISON_SPREAD = [-1, -0.33, 0.33, 1];
 
 /**
- * Resolve a per-VCO value that may follow another VCO (one hop only: if the
+ * Resolve a VCO's pw value that may follow another VCO (one hop only: if the
  * source is itself linked, we read its *stored* value — no chains, no cycles).
  */
-export function resolveLinked(
-  vcos: readonly { pw: number; pwmDepth: number }[],
+export function resolveLinkedPw(
+  vcos: readonly { pw: number }[],
   self: number,
-  field: "pw" | "pwmDepth",
   linkTo: number | null,
 ): number {
-  if (linkTo === null || linkTo === self) return vcos[self][field];
-  return vcos[linkTo]?.[field] ?? vcos[self][field];
+  if (linkTo === null || linkTo === self) return vcos[self].pw;
+  return vcos[linkTo]?.pw ?? vcos[self].pw;
 }
 
-/** Virtual Patch destination accumulator (per-sample). */
-type VpBus = Record<VpDest, number>;
+/** Global (non-per-VCO) Virtual Patch destinations, accumulated per sample. */
+type VpGlobalDest = "cutoff" | "resonance" | "noise" | "fxAmount" | "mg1Rate";
+type VpGlobalBus = Record<VpGlobalDest, number>;
 
-const VP_ZERO: VpBus = {
-  pitch: 0,
-  pw: 0,
+const VP_GLOBAL_ZERO: VpGlobalBus = {
   cutoff: 0,
   resonance: 0,
-  amp: 0,
   noise: 0,
   fxAmount: 0,
   mg1Rate: 0,
@@ -86,7 +83,12 @@ export class EngineCore {
   private lastNoise = 0; // for the mod-mix source
   private lastOut = [0, 0, 0, 0];
   private a440Phase = 0;
-  private readonly vp: VpBus = { ...VP_ZERO };
+  // Virtual Patch mod buses, refreshed each sample: globals are scalar, the
+  // per-VCO destinations (pitch/pw/amp) accumulate one value per oscillator.
+  private readonly vpG: VpGlobalBus = { ...VP_GLOBAL_ZERO };
+  private readonly vpPitch = [0, 0, 0, 0];
+  private readonly vpPw = [0, 0, 0, 0];
+  private readonly vpAmp = [0, 0, 0, 0];
 
   constructor(readonly sampleRate: number) {
     this.vcos = [0, 1, 2, 3].map(() => new Oscillator(sampleRate));
@@ -233,8 +235,17 @@ export class EngineCore {
   /* ---------------- virtual patch ---------------- */
 
   private evalVirtualPatch(mg1: number, mg2: number): void {
-    const bus = this.vp;
-    for (const d of Object.keys(bus) as VpDest[]) bus[d] = 0;
+    const g = this.vpG;
+    g.cutoff = 0;
+    g.resonance = 0;
+    g.noise = 0;
+    g.fxAmount = 0;
+    g.mg1Rate = 0;
+    for (let i = 0; i < 4; i++) {
+      this.vpPitch[i] = 0;
+      this.vpPw[i] = 0;
+      this.vpAmp[i] = 0;
+    }
     for (const slot of this.patch.virtualPatch) {
       if (slot.source === "off" || slot.amount === 0) continue;
       let v: number;
@@ -248,7 +259,19 @@ export class EngineCore {
         case "modWheel": v = this.modWheel; break;
         case "pitchBend": v = this.pitchBend; break;
       }
-      bus[slot.dest] += v * slot.amount;
+      const c = v * slot.amount;
+      switch (slot.dest) {
+        // Per-VCO: apply to each targeted oscillator only.
+        case "pitch": for (let i = 0; i < 4; i++) if (slot.vcos[i]) this.vpPitch[i] += c; break;
+        case "pw": for (let i = 0; i < 4; i++) if (slot.vcos[i]) this.vpPw[i] += c; break;
+        case "amp": for (let i = 0; i < 4; i++) if (slot.vcos[i]) this.vpAmp[i] += c; break;
+        // Global: one shared value.
+        case "cutoff": g.cutoff += c; break;
+        case "resonance": g.resonance += c; break;
+        case "noise": g.noise += c; break;
+        case "fxAmount": g.fxAmount += c; break;
+        case "mg1Rate": g.mg1Rate += c; break;
+      }
     }
   }
 
@@ -264,8 +287,8 @@ export class EngineCore {
 
       const mg2 = this.mg2.tick(p.mg2.rateHz, p.mg2.wave);
       this.evalVirtualPatch(this.lastMg1, mg2);
-      const vp = this.vp;
-      const mg = this.mg1.tick(p.mg1.rateHz * 2 ** (vp.mg1Rate * 2), p.mg1.wave);
+      const g = this.vpG;
+      const mg = this.mg1.tick(p.mg1.rateHz * 2 ** (g.mg1Rate * 2), p.mg1.wave);
       this.lastMg1 = mg;
 
       // Model D mod-mix: audio-rate VCO4↔noise blend, depth = mod wheel.
@@ -283,11 +306,10 @@ export class EngineCore {
                 p.effects.modDepth *
                   (p.effects.modSource === "eg1" ? this.filterEg.value : mg),
             );
-      const fxSweep = Math.max(0, fxSweepBase + vp.fxAmount);
+      const fxSweep = Math.max(0, fxSweepBase + g.fxAmount);
 
       // --- VCO bank → per-VCO VCA → mix -----------------------------------
       let mix = 0;
-      const ampVp = Math.min(2, Math.max(0, 1 + vp.amp));
       for (let i = 0; i < 4; i++) {
         const vp_ = p.vco[i];
         const env = this.ampEgs[i].tick(p.eg2);
@@ -310,7 +332,7 @@ export class EngineCore {
           (!isMaster && fxEngaged ? p.effects.intervalSemitones : 0) +
           this.pitchBend * p.master.bendRangeSemis +
           wheelPitchSemis +
-          vp.pitch * 12 +
+          this.vpPitch[i] * 12 +
           (vp_.fineCents + spread + this.drifts[i].tick() + mg * p.mg1.toPitchCents) /
             100 +
           p.master.tuneCents / 100;
@@ -328,10 +350,10 @@ export class EngineCore {
           freq *= 2 ** (this.lastOut[masterIdx] * p.effects.xmod * fxSweep * 3);
         }
 
-        // Per-VCO PW/PWM, optionally following another VCO (one hop, no chains).
-        const pwBase = resolveLinked(p.vco, i, "pw", vp_.pwSyncTo);
-        const pwmDepth = resolveLinked(p.vco, i, "pwmDepth", vp_.pwmSyncTo);
-        const pwOffset = pwBase + pwmDepth * 0.35 * mg + vp.pw * 0.35;
+        // Static PW (optionally following another VCO, one hop) + the
+        // per-VCO Virtual Patch width modulation (PWM = MG1 → pw route).
+        const pwBase = resolveLinkedPw(p.vco, i, vp_.pwSyncTo);
+        const pwOffset = pwBase + this.vpPw[i] * 0.35;
         const sample = this.vcos[i].tick(
           freq,
           vp_.wave,
@@ -339,14 +361,15 @@ export class EngineCore {
           !isMaster && p.effects.sync ? master : undefined,
         );
         this.lastOut[i] = sample;
-        mix += sample * vp_.level * env * ampVp * 0.3;
+        const ampMod = Math.min(2, Math.max(0, 1 + this.vpAmp[i]));
+        mix += sample * vp_.level * env * ampMod * 0.3;
       }
 
       // --- Noise + feedback/overload drive --------------------------------
       const nzSample =
         p.mixer.noiseType === "white" ? this.noise.white() : this.noise.pink();
       this.lastNoise = nzSample;
-      const noiseLevel = Math.min(1, Math.max(0, p.mixer.noiseLevel + vp.noise));
+      const noiseLevel = Math.min(1, Math.max(0, p.mixer.noiseLevel + g.noise));
       if (noiseLevel > 0) {
         mix += nzSample * noiseLevel * maxEnvValue(this.ampEgs) * 0.3;
       }
@@ -365,8 +388,8 @@ export class EngineCore {
             trackSemis / 12 +
             mg * p.mg1.toCutoff * 3 +
             wheelFilterOct +
-            vp.cutoff * 4);
-      const resonance = Math.min(1, Math.max(0, p.vcf.resonance + vp.resonance));
+            g.cutoff * 4);
+      const resonance = Math.min(1, Math.max(0, p.vcf.resonance + g.resonance));
       let s = this.filter.tick(mix, cutoff, resonance);
 
       // --- Master ----------------------------------------------------------

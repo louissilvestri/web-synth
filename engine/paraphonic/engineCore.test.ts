@@ -78,20 +78,26 @@ describe("EngineCore", () => {
     expect(rms(after)).toBeGreaterThan(0.01); // held note keeps sounding
   });
 
-  it("sync interval and PWM render clean bounded audio", () => {
+  it("sync interval and MG1→PW (PWM via virtual patch) render clean audio", () => {
     const core = new EngineCore(SR);
     const p = defaultPatch();
     p.vco.forEach((v) => {
       v.enabled = true;
       v.wave = "pulse";
+      v.pw = 0.3;
     });
     p.effects.sync = true;
     p.effects.intervalSemitones = 7;
     p.vco.forEach((v, i) => {
-      v.pw = 0.3;
-      v.pwmDepth = 1;
-      if (i > 0) v.pwSyncTo = 0; // slaves follow VCO 1's width
+      if (i > 0) v.pwSyncTo = 0; // slaves follow VCO 1's static width
     });
+    // PWM is now a virtual-patch route: MG1 → pulse width on every VCO.
+    p.virtualPatch[0] = {
+      source: "mg1",
+      dest: "pw",
+      amount: 1,
+      vcos: [true, true, true, true],
+    };
     p.mg1.rateHz = 6;
     core.setPatch(p);
     core.noteOn(48, 1);
@@ -103,6 +109,36 @@ describe("EngineCore", () => {
       sum += v * v;
     }
     expect(Math.sqrt(sum / buf.length)).toBeGreaterThan(0.01);
+  });
+
+  it("virtual patch targets only the selected VCOs", () => {
+    // Route a big static pitch offset via a DC-ish source (mod wheel at 1),
+    // targeting VCO 2 only. VCO 1's pitch must be unchanged; VCO 2's shifted.
+    const mk = (targetVco2: boolean) => {
+      const core = new EngineCore(SR);
+      const p = defaultPatch();
+      p.vco[0].enabled = true;
+      p.vco[1].enabled = true;
+      p.keyAssign.mode = "mono"; // both VCOs sound the same note
+      p.virtualPatch[0] = {
+        source: "modWheel",
+        dest: "pitch",
+        amount: 1, // +1 octave at full
+        vcos: [false, targetVco2, false, false],
+      };
+      core.setPatch(p);
+      core.setModWheel(1);
+      core.noteOn(57, 1);
+      return render(core, 0.3);
+    };
+    // Targeting VCO2 detunes it an octave up → beating/different waveform vs.
+    // the untargeted render where both VCOs stay in unison.
+    const targeted = mk(true);
+    const untargeted = mk(false);
+    let diff = 0;
+    for (let i = 0; i < targeted.length; i++) diff += Math.abs(targeted[i] - untargeted[i]);
+    expect(diff / targeted.length).toBeGreaterThan(0.01);
+    for (const v of targeted) expect(Number.isFinite(v)).toBe(true);
   });
 
   it("arpeggiator steps notes on its own clock", () => {
@@ -127,10 +163,11 @@ describe("EngineCore", () => {
   it("virtual patch routes modulate without breaking the render", () => {
     const core = new EngineCore(SR);
     const p = defaultPatch();
-    p.virtualPatch[0] = { source: "mg1", dest: "cutoff", amount: 0.8 };
-    p.virtualPatch[1] = { source: "velocity", dest: "amp", amount: -0.9 };
-    p.virtualPatch[2] = { source: "mg2", dest: "pitch", amount: 0.2 };
-    p.virtualPatch[3] = { source: "kbdTrack", dest: "resonance", amount: 0.9 };
+    const all: [boolean, boolean, boolean, boolean] = [true, true, true, true];
+    p.virtualPatch[0] = { source: "mg1", dest: "cutoff", amount: 0.8, vcos: all };
+    p.virtualPatch[1] = { source: "velocity", dest: "amp", amount: -0.9, vcos: all };
+    p.virtualPatch[2] = { source: "mg2", dest: "pitch", amount: 0.2, vcos: all };
+    p.virtualPatch[3] = { source: "kbdTrack", dest: "resonance", amount: 0.9, vcos: all };
     p.mg1.rateHz = 8;
     core.setPatch(p);
     core.noteOn(72, 0.9);
@@ -143,7 +180,12 @@ describe("EngineCore", () => {
     const mk = (vel: number) => {
       const core = new EngineCore(SR);
       const p = defaultPatch();
-      p.virtualPatch[0] = { source: "velocity", dest: "amp", amount: -0.85 };
+      p.virtualPatch[0] = {
+        source: "velocity",
+        dest: "amp",
+        amount: -0.85,
+        vcos: [true, true, true, true],
+      };
       core.setPatch(p);
       core.noteOn(57, vel);
       return rms(render(core, 0.3));
@@ -176,22 +218,16 @@ describe("EngineCore", () => {
   });
 
   it("pw sync: a linked VCO follows its source's stored value, one hop only", async () => {
-    const { resolveLinked } = await import("./engineCore");
-    const vcos = [
-      { pw: 0.3, pwmDepth: 0.9 },
-      { pw: -0.3, pwmDepth: 0.1 },
-      { pw: 0.1, pwmDepth: 0.5 },
-      { pw: 0, pwmDepth: 0 },
-    ];
-    expect(resolveLinked(vcos, 1, "pw", null)).toBe(-0.3); // own value
-    expect(resolveLinked(vcos, 1, "pw", 0)).toBe(0.3); // follows VCO 1
-    expect(resolveLinked(vcos, 1, "pwmDepth", 0)).toBe(0.9);
+    const { resolveLinkedPw } = await import("./engineCore");
+    const vcos = [{ pw: 0.3 }, { pw: -0.3 }, { pw: 0.1 }, { pw: 0 }];
+    expect(resolveLinkedPw(vcos, 1, null)).toBe(-0.3); // own value
+    expect(resolveLinkedPw(vcos, 1, 0)).toBe(0.3); // follows VCO 1
     // One hop only: VCO3 follows VCO2 — reads VCO2's STORED pw, even if
     // VCO2 itself is linked elsewhere (no chasing, so no cycles possible).
-    expect(resolveLinked(vcos, 2, "pw", 1)).toBe(-0.3);
+    expect(resolveLinkedPw(vcos, 2, 1)).toBe(-0.3);
     // Self/invalid links degrade to own value.
-    expect(resolveLinked(vcos, 2, "pw", 2)).toBe(0.1);
-    expect(resolveLinked(vcos, 2, "pw", 9)).toBe(0.1);
+    expect(resolveLinkedPw(vcos, 2, 2)).toBe(0.1);
+    expect(resolveLinkedPw(vcos, 2, 9)).toBe(0.1);
   });
 
   it("A-440 reference tone sounds with no notes held", () => {

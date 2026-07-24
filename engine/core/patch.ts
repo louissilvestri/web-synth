@@ -40,12 +40,10 @@ export interface VcoPatch {
   keyboardTrack: boolean;
   /** Pulse-width offset from the 50% base, ±0.4 (10%..90% duty). */
   pw: number;
-  /** MG1 → width modulation depth, 0..1. */
-  pwmDepth: number;
   /** Follow another VCO's pw value (index 0–3, one hop) instead of our own. */
   pwSyncTo: number | null;
-  /** Follow another VCO's pwmDepth value (index 0–3, one hop). */
-  pwmSyncTo: number | null;
+  // PWM (LFO → width) now lives in the Virtual Patch: source MG1 → dest "pw",
+  // targeting this VCO. One general mechanism instead of a dedicated slider.
 }
 
 export interface MixerPatch {
@@ -167,12 +165,28 @@ export type VpDest =
   | "fxAmount"
   | "mg1Rate";
 
+/**
+ * Destinations that live on individual oscillators — a route to one of these
+ * targets which VCO(s) it hits (VpSlot.vcos). The rest are global: one shared
+ * value (the filter is shared; noise, fx, and MG rate are single sources).
+ * With four VCOs a target selector beats the hardware's destination-per-osc
+ * list, which would balloon to 12+ entries.
+ */
+export const VP_PER_VCO_DESTS: readonly VpDest[] = ["pitch", "pw", "amp"];
+
+export function isPerVcoDest(dest: VpDest): boolean {
+  return VP_PER_VCO_DESTS.includes(dest);
+}
+
 /** One Virtual Patch routing slot (MS2000 heritage). */
 export interface VpSlot {
   source: VpSource;
   dest: VpDest;
   /** Bipolar depth −1..1. */
   amount: number;
+  /** For per-VCO destinations: which oscillators this route hits. Ignored for
+   *  global destinations. Defaults to all four. */
+  vcos: [boolean, boolean, boolean, boolean];
 }
 
 export type VirtualPatch = [VpSlot, VpSlot, VpSlot, VpSlot, VpSlot, VpSlot];
@@ -204,10 +218,12 @@ function vcoDefault(n: 1 | 2 | 3 | 4): VcoPatch {
     level: 0.8,
     keyboardTrack: true,
     pw: 0,
-    pwmDepth: 0,
     pwSyncTo: null,
-    pwmSyncTo: null,
   };
+}
+
+function vpSlotDefault(): VpSlot {
+  return { source: "off", dest: "cutoff", amount: 0, vcos: [true, true, true, true] };
 }
 
 export function defaultPatch(): Patch {
@@ -232,12 +248,12 @@ export function defaultPatch(): Patch {
     modMix: { mix: 1, toPitch: true, toFilter: false },
     arp: { on: false, mode: "up", latch: false, rangeOct: 1, bpm: 120, gate: 0.5 },
     virtualPatch: [
-      { source: "off", dest: "cutoff", amount: 0 },
-      { source: "off", dest: "cutoff", amount: 0 },
-      { source: "off", dest: "cutoff", amount: 0 },
-      { source: "off", dest: "cutoff", amount: 0 },
-      { source: "off", dest: "cutoff", amount: 0 },
-      { source: "off", dest: "cutoff", amount: 0 },
+      vpSlotDefault(),
+      vpSlotDefault(),
+      vpSlotDefault(),
+      vpSlotDefault(),
+      vpSlotDefault(),
+      vpSlotDefault(),
     ],
     master: { tuneCents: 0, volume: 0.75, a440: false, bendRangeSemis: 2 },
   };

@@ -77,11 +77,7 @@ export function VcoBank() {
       <div className="vco-bank">
         {vco.map((v, i) => {
           const pwSynced = v.pwSyncTo !== null;
-          const pwmSynced = v.pwmSyncTo !== null;
           const pwShown = pwSynced ? (vco[v.pwSyncTo!]?.pw ?? v.pw) : v.pw;
-          const pwmShown = pwmSynced
-            ? (vco[v.pwmSyncTo!]?.pwmDepth ?? v.pwmDepth)
-            : v.pwmDepth;
           return (
             <div key={i} className={`vco${v.enabled ? "" : " vco--off"}`}>
               <div className="vco__head">
@@ -124,23 +120,6 @@ export function VcoBank() {
                                   disabled={pwSynced}
                                 />
                                 <SyncSelect self={i} value={v.pwSyncTo} label={`VCO ${i + 1} PW sync source`} onChange={(pwSyncTo) => updateVco(i, { pwSyncTo })} />
-                              </div>
-                            ),
-                          },
-                          {
-                            id: "pwm",
-                            el: (
-                              <div className="vco__pw">
-                                <Slider
-                                  label="PWM"
-                                  min={0}
-                                  max={1}
-                                  value={pwmShown}
-                                  format={(x) => `${Math.round(x * 100)}%`}
-                                  onChange={(pwmDepth) => updateVco(i, { pwmDepth })}
-                                  disabled={pwmSynced}
-                                />
-                                <SyncSelect self={i} value={v.pwmSyncTo} label={`VCO ${i + 1} PWM sync source`} onChange={(pwmSyncTo) => updateVco(i, { pwmSyncTo })} />
                               </div>
                             ),
                           },

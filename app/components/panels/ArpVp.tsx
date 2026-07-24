@@ -1,6 +1,6 @@
 "use client";
 
-import type { VpDest, VpSource } from "../../../engine/core/patch";
+import { isPerVcoDest, type VpDest, type VpSource } from "../../../engine/core/patch";
 import { useSynthStore } from "../../state/store";
 import { Segmented, Toggle } from "../controls/Segmented";
 import { Slider } from "../controls/Slider";
@@ -154,6 +154,30 @@ export function VirtualPatchPanel() {
                 ))}
               </select>
             </label>
+            {/* Per-VCO destinations reveal a target picker; globals don't. */}
+            {isPerVcoDest(slot.dest) && (
+              <div className="vp__field">
+                <span className="vp__label">→ VCO</span>
+                <div className="vp__targets" role="group" aria-label={`Slot ${i + 1} target oscillators`}>
+                  {slot.vcos.map((on, k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      aria-pressed={on}
+                      className={`vp__target${on ? " is-on" : ""}`}
+                      onClick={() => {
+                        const vcos = [...slot.vcos] as typeof slot.vcos;
+                        vcos[k] = !vcos[k];
+                        setSlot(i, { vcos });
+                      }}
+                      title={`${on ? "Stop targeting" : "Target"} VCO ${k + 1}`}
+                    >
+                      {k + 1}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <Slider
               label="Amount"
               min={-1}

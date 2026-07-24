@@ -65,6 +65,8 @@ describe("working-patch migration", () => {
     expect(p.virtualPatch).toHaveLength(6);
     expect(p.virtualPatch[0].source).toBe("mg1");
     expect(p.virtualPatch[1].source).toBe("off");
+    // A pre-targeting save has no vcos → defaults to all four.
+    expect(p.virtualPatch[0].vcos).toEqual([true, true, true, true]);
   });
 
   it("merges per-VCO overrides while keeping unspecified VCOs at defaults", () => {
