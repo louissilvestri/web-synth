@@ -41,7 +41,7 @@ export function EnvelopesPanel() {
       <h2 className="panel__title">Contours</h2>
       <Sortable
         scope="envelopes"
-        className="panel__row"
+        className="panel__row panel__row--split"
         items={[
           {
             id: "eg1",
