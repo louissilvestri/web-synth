@@ -17,26 +17,98 @@
 .rail__item[aria-disabled="true"]:hover { background: none; }
 .rail__foot { margin-top: auto; font-size: var(--fs-xs); color: var(--muted); padding: 0 10px; }
 
-/* ---- panel grid: signal-flow order ---- */
-.synth { padding: calc(var(--pad) * 2); display: flex; flex-direction: column;
+/* ---- panel grid: signal-flow order, uniform block units ----
+   One block = the Ladder Filter panel's width × half the Oscillator panel's
+   height. Every panel spans a whole number of blocks on each axis (M4), so
+   the surface reads as a tidy grid instead of ragged content-sized cards. */
+/* A square block: the Ladder Filter panel's width, and half the Oscillator
+   panel's height rounded up so 2 blocks clear the tallest 2-block content. */
+/* --sl-w/--sl-h are the ONE slider size, used by every track on the surface
+   (panels, virtual patch, wheels) so no slider is wider or taller than
+   another. Grid columns are minmax(--sl-w, 1fr): a track never shrinks below
+   the token, and centres in the column when there's spare room. */
+.synth { --block-w: 180px; --block-h: 180px; --sl-w: 30px; --sl-h: 118px;
+  padding: calc(var(--pad) * 2); display: flex; flex-direction: column;
   gap: calc(var(--gap) * 3); max-width: 1400px; }
-.synth__panels { display: flex; flex-wrap: wrap; gap: calc(var(--gap) * 3);
-  align-items: stretch; }
+.synth__panels { display: grid; gap: calc(var(--gap) * 3);
+  grid-template-columns: repeat(auto-fill, var(--block-w));
+  grid-auto-rows: var(--block-h); align-items: stretch;
+  justify-content: start; }
 .panel { padding: calc(var(--pad) * 1.5); display: flex; flex-direction: column;
   gap: calc(var(--gap) * 2); }
-.panel--wide { flex: 1 1 100%; }
+/* ---- panel frames (layout-driven order/size + Arrange mode, M4) ---- */
+.pframe { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+/* Panels fill their block span; content that outgrows it scrolls inside the
+   card rather than spilling over neighbors. */
+.pframe > .panel { flex: 1; min-height: 0; overflow: auto; }
+.pframe--arrange { outline: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 3px; border-radius: var(--radius); cursor: grab; }
+.pframe__bar { display: flex; align-items: center; gap: var(--gap);
+  padding: 3px 8px; margin-bottom: 4px; border-radius: calc(var(--radius) - 5px);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  border: var(--bw) solid var(--border); font-size: var(--fs-xs); }
+.pframe__grip { color: var(--muted); cursor: grab; }
+.pframe__name { color: var(--text); font-family: var(--font-display); }
+.pframe__tools { margin-left: auto; display: flex; gap: 2px; }
+.pframe__btn { border: none; background: none; color: var(--muted); cursor: pointer;
+  padding: 2px 6px; border-radius: 5px; font-size: var(--fs-xs); }
+.pframe__btn:hover { background: var(--surface-2); color: var(--text); }
+.pframe__btn.is-active { color: var(--accent); }
+.pframe__btn:disabled { opacity: 0.35; cursor: default; }
+.pframe__btn:disabled:hover { background: none; color: var(--muted); }
+.pframe__btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Block-size steppers: −  2w  + */
+.pframe__step { display: inline-flex; align-items: center; gap: 1px;
+  border: var(--bw) solid var(--border); border-radius: 5px; margin-left: 3px; }
+.pframe__dim { color: var(--text); font-size: var(--fs-xs); min-width: 18px;
+  text-align: center; }
+.rail__sub { display: flex; flex-direction: column; gap: 2px; padding-left: 10px; }
+.rail__item--undo { color: var(--accent); }
+/* Persistence failure — never silent (see storageStatus.ts). */
+.storage-banner { margin: calc(var(--pad) * 2) calc(var(--pad) * 2) 0;
+  padding: var(--pad) calc(var(--pad) * 1.5); border-radius: var(--radius);
+  border: var(--bw) solid var(--alert); font-size: var(--fs-sm);
+  background: color-mix(in srgb, var(--alert) var(--fb-tint), var(--surface)); }
+
+/* ---- sortable controls (Arrange mode) ---- */
+.ctl { position: relative; display: flex; flex-direction: column; align-items: stretch;
+  outline: 1px dashed color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 2px; border-radius: calc(var(--radius) - 5px); cursor: grab;
+  min-width: 0; }
+.ctl__grip { border: none; background: none; color: var(--muted); cursor: grab;
+  font-size: var(--fs-xs); padding: 0 2px; align-self: center; line-height: 1; }
+.ctl__grip:hover { color: var(--accent); }
+.ctl__grip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .panel__title { font-family: var(--font-display); font-weight: var(--display-weight);
   font-size: var(--fs-sm); letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--muted); margin: 0; }
 .panel__sub { font-size: var(--fs-xs); color: var(--muted); margin: 0 0 4px;
   font-family: var(--font-display); font-weight: var(--display-weight); }
-.panel__sliders { display: flex; gap: calc(var(--gap) * 2); align-items: flex-end; }
+/* Control sub-grid: a track is at least --sl-w wide and shares the leftover
+   space, so a row of controls packs to the panel's real width and wraps
+   instead of overflowing. auto-FILL (not auto-fit) keeps empty tracks, so
+   three sliders stay slider-sized in a wide panel rather than ballooning. */
+.panel__sliders { display: grid; gap: calc(var(--gap) * 2);
+  grid-template-columns: repeat(auto-fill, minmax(var(--sl-w), 1fr));
+  align-items: end; }
+.panel__blocks { display: flex; flex-direction: column; gap: calc(var(--gap) * 2);
+  align-items: stretch; min-width: 0; }
 .panel__row { display: flex; gap: calc(var(--gap) * 2); align-items: center; flex-wrap: wrap; }
+/* Row of equal groups (e.g. the two contours). Children share the width so
+   their inner control grids get a real basis — a shrink-to-fit child would
+   collapse the grid to one column and stack the sliders vertically. */
+.panel__row--split { flex-wrap: nowrap; align-items: flex-start; }
+.panel__row--split > * { flex: 1 1 0; min-width: 0; }
 .panel__error { color: var(--alert); font-size: var(--fs-sm); margin: 0; }
 
-/* ---- vertical slider ---- */
-.sl { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 46px; }
-.sl__track { position: relative; width: 44px; height: 132px; border-radius: var(--radius);
+/* ---- vertical slider ----
+   Width is set by the control sub-grid, not the slider: the track's width
+   buys nothing functionally (the drag is vertical) and width is the scarcest
+   currency in a 180px block. 28px min × 132px tall clears WCAG 2.5.8's
+   24×24 target minimum with room to spare. */
+.sl { display: flex; flex-direction: column; align-items: center; gap: 4px;
+  min-width: 0; }
+.sl__track { position: relative; width: var(--sl-w); height: var(--sl-h); border-radius: var(--radius);
   background: var(--surface-2); border: var(--bw) solid var(--border);
   cursor: ns-resize; touch-action: none; }
 .sl__track:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -46,19 +118,48 @@
 .sl__thumb { position: absolute; left: 4px; right: 4px; height: 10px;
   border-radius: 6px; background: var(--accent); box-shadow: var(--shadow);
   pointer-events: none; }
-.sl__value { font-size: var(--fs-xs); color: var(--text); }
-.sl__label { font-size: var(--fs-xs); color: var(--muted); }
+/* Readouts must never widen their track — they ellipsize instead. */
+.sl__value { font-size: var(--fs-xs); color: var(--text); max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sl__label { font-size: var(--fs-xs); color: var(--muted); max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sl--disabled { opacity: 0.45; }
 
-/* ---- segmented + toggle ---- */
-.seg { display: inline-flex; background: var(--surface-2); border: var(--bw) solid var(--border);
-  border-radius: var(--radius); padding: 2px; gap: 2px; width: fit-content; }
+/* ---- segmented + toggle ----
+   Wraps rather than overflowing: a long option set ("S&H", "Chord") in a
+   1-block panel folds to a second line instead of pushing a scrollbar. */
+.seg { display: flex; flex-wrap: wrap; background: var(--surface-2);
+  border: var(--bw) solid var(--border);
+  border-radius: var(--radius); padding: 2px; gap: 2px; width: fit-content;
+  max-width: 100%; }
+/* min-height 22px + the 2px gap = 24px row pitch, so a segmented control that
+   wraps still satisfies WCAG 2.5.8's spacing exception between stacked rows. */
 .seg__btn { border: none; background: none; color: var(--muted); cursor: pointer;
   padding: 4px 9px; border-radius: calc(var(--radius) - 3px); font-size: var(--fs-xs);
-  font-family: var(--font-body); transition: background var(--dur) var(--ease); min-width: 30px; }
+  font-family: var(--font-body); transition: background var(--dur) var(--ease);
+  min-width: 30px; min-height: 22px; }
 .seg__btn:hover { color: var(--text); }
 .seg__btn.is-active { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .seg__btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.seg--mini { padding: 1px; }
+.seg--mini .seg__btn { padding: 1px 5px; min-width: 18px; font-size: 9px; }
+/* PW + its sync selector sit SIDE BY SIDE, spanning two tracks of the control
+   sub-grid. `subgrid` inherits the parent's exact track sizes, so the PW
+   slider is the same width as every other slider instead of being squeezed
+   by the selector stacked beneath it. */
+.vco__pw { grid-column: span 2; display: grid; grid-template-columns: subgrid;
+  align-items: start; min-width: 0; }
+@supports not (grid-template-columns: subgrid) {
+  .vco__pw { grid-template-columns: 1fr 1fr; gap: calc(var(--gap) * 2); }
+}
+/* Sync selector: a vertical strip matching the track height, labelled like a
+   slider so the pair reads as one control group. */
+.vco__sync { display: flex; flex-direction: column; align-items: center;
+  gap: 4px; min-width: 0; }
+.vco__pw .seg--mini { flex-direction: column; width: var(--sl-w); height: var(--sl-h);
+  gap: 1px; padding: 1px; }
+.vco__pw .seg--mini .seg__btn { flex: 1; min-width: 0; padding: 0;
+  display: flex; align-items: center; justify-content: center; }
 
 .tgl { display: inline-flex; align-items: center; gap: 7px; border: var(--bw) solid var(--border);
   background: var(--surface-2); color: var(--muted); border-radius: var(--radius);
@@ -89,7 +190,11 @@
   border-radius: 0 0 7px 7px; background: var(--text); cursor: pointer; padding: 0;
   min-width: 0; }
 .kbd__key.is-active { background: var(--accent); }
-.kbd__key--black { flex: 0 0 0; z-index: 2; margin: 0 -1.4%; width: 2.8%;
+/* Black keys: the basis must carry the width — `flex: 0 0 0` overrode the
+   `width` declaration and collapsed them to ~2px. Basis ≈ 60% of a white key
+   (piano proportion); the negative margins cancel it so white keys keep
+   their size. min-width keeps them clickable on a narrow keyboard. */
+.kbd__key--black { flex: 0 0 2.9%; z-index: 2; margin: 0 -1.45%; min-width: 26px;
   height: 58%; background: var(--bg); border-radius: 0 0 5px 5px; }
 .kbd__key--black.is-active { background: var(--accent); }
 .kbd__key:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; z-index: 3; }
@@ -110,6 +215,14 @@
   background: var(--surface-2); border: var(--bw) solid var(--border);
   border-radius: calc(var(--radius) - 5px); padding: 5px 7px; width: 100%; cursor: pointer; }
 .vp__select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.vp__targets { display: flex; gap: 3px; }
+.vp__target { flex: 1; border: var(--bw) solid var(--border); background: var(--surface-2);
+  color: var(--muted); border-radius: calc(var(--radius) - 6px); padding: 4px 0;
+  font-family: var(--font-mono); font-size: var(--fs-xs); cursor: pointer; min-width: 22px;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease); }
+.vp__target:hover { color: var(--text); }
+.vp__target.is-on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.vp__target:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* ---- performance row: wheels + keyboard + midi ---- */
 .perf-row { display: flex; gap: calc(var(--gap) * 3); align-items: stretch; }
@@ -118,7 +231,8 @@
   padding: calc(var(--pad) * 1.5); background: var(--surface);
   border: var(--bw) solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
 .wheels__wheel { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 46px; }
-.wheels__bend { height: 132px; width: 44px; position: relative; }
+/* Same track size as every other slider (see --sl-w/--sl-h). */
+.wheels__bend { position: relative; }
 .wheels__mix { display: flex; gap: calc(var(--gap) * 2); align-items: flex-end; }
 .wheels__dest { display: flex; flex-direction: column; gap: var(--gap); }
 .midi { display: flex; flex-direction: column; gap: 4px; align-items: center;
@@ -143,6 +257,11 @@
     border-right: none; border-bottom: var(--bw) solid var(--border); }
   .rail__brand { margin: 0 10px 0 6px; }
   .rail__foot { display: none; }
+  /* Too narrow for the block grid: single column, natural heights, and the
+     stored spans stop applying (they'd overflow the viewport). */
+  .synth__panels { grid-template-columns: 1fr; grid-auto-rows: auto; }
+  .pframe { grid-column: 1 / -1 !important; grid-row: auto !important; }
+  .pframe > .panel { overflow: visible; }
 }
 
 @media (prefers-reduced-motion: reduce) {

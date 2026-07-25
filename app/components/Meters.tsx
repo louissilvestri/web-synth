@@ -31,19 +31,53 @@ export function Meters() {
 
     let raf = 0;
     let interval: ReturnType<typeof setInterval> | undefined;
+    // Persists across frames: the smoothed auto-scale gain (a simple AGC).
+    let scopeGain = 1;
+
+    /** First rising zero-crossing at/after `from`, or -1. */
+    const risingCross = (from: number, to: number): number => {
+      for (let i = Math.max(1, from); i < to; i++) {
+        if (wave[i - 1] < 0 && wave[i] >= 0) return i;
+      }
+      return -1;
+    };
 
     const draw = () => {
       const sw = scope.canvas.width;
       const sh = scope.canvas.height;
       analyser.getFloatTimeDomainData(wave);
       scope.clearRect(0, 0, sw, sh);
+
+      // --- Trigger: lock the trace to a rising zero-crossing so it stops
+      //     drifting. Then span ~3 estimated periods so any pitch shows a
+      //     readable few cycles (horizontal auto-scale). ---
+      const half = wave.length >> 1;
+      const trig = Math.max(0, risingCross(1, half));
+      const next = risingCross(trig + 1, wave.length);
+      const period = next > trig ? next - trig : 0;
+      let span = period > 0 ? period * 3 : wave.length;
+      span = Math.min(span, wave.length - trig);
+      span = Math.max(span, 64);
+
+      // --- Vertical auto-scale: fill ~90% of the height, fast to shrink
+      //     (never clip), slow to grow (no pumping); gated so the noise
+      //     floor isn't magnified during silence. ---
+      let peak = 1e-4;
+      for (let i = trig; i < trig + span; i++) {
+        const a = Math.abs(wave[i]);
+        if (a > peak) peak = a;
+      }
+      const target = peak < 0.003 ? 1 : Math.min(25, Math.max(1, 0.9 / peak));
+      scopeGain += (target - scopeGain) * (target < scopeGain ? 0.5 : 0.05);
+
       scope.strokeStyle = accent;
       scope.lineWidth = 1.5;
       scope.beginPath();
-      for (let i = 0; i < wave.length; i++) {
-        const x = (i / wave.length) * sw;
-        const y = sh / 2 - wave[i] * sh * 0.48;
-        if (i === 0) scope.moveTo(x, y);
+      for (let j = 0; j < span; j++) {
+        const x = (j / span) * sw;
+        const v = Math.max(-1, Math.min(1, wave[trig + j] * scopeGain));
+        const y = sh / 2 - v * sh * 0.46;
+        if (j === 0) scope.moveTo(x, y);
         else scope.lineTo(x, y);
       }
       scope.stroke();

@@ -21,9 +21,9 @@ describe("patch store", () => {
 
   it("updateVco() touches only the indexed VCO", () => {
     const { updateVco } = useSynthStore.getState();
-    updateVco(2, { wave: "square", semitones: 5 });
+    updateVco(2, { wave: "pulse", semitones: 5 });
     const { vco } = useSynthStore.getState().patch;
-    expect(vco[2].wave).toBe("square");
+    expect(vco[2].wave).toBe("pulse");
     expect(vco[2].semitones).toBe(5);
     expect(vco[0].wave).toBe(defaultPatch().vco[0].wave);
   });

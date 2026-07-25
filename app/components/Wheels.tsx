@@ -87,7 +87,7 @@ export function Wheels() {
           }}
           onKeyUp={releaseBend}
         >
-          <div className="sl__thumb" style={{ bottom: `calc(${((bendUi + 1) / 2) * 100}% - 5px)` }} />
+          <div className="sl__thumb" style={{ bottom: `calc(${Math.round((bendUi + 1) * 50000) / 1000}% - 5px)` }} />
         </div>
         <span className="sl__label">Pitch</span>
       </div>

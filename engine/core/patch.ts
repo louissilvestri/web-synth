@@ -10,9 +10,13 @@ export type Waveform =
   | "triangle"
   | "shark" // Minimoog triangle-saw hybrid
   | "saw"
-  | "square"
-  | "pulseWide" // ~1/3 duty
-  | "pulseNarrow"; // ~1/10 duty
+  /**
+   * One pulse waveform, 50% base width, shaped continuously by the per-VCO
+   * PW slider (±0.4 → 10%..90% duty). Replaces the Model D's three fixed
+   * rectangles (square / wide / narrow) — those existed because the hardware
+   * had no PW control; we do. Legacy patches migrate in mergeSavedPatch.
+   */
+  | "pulse";
 
 export type KeyAssignMode = "mono" | "poly" | "share" | "chord";
 export type TriggerMode = "single" | "multiple";
@@ -34,6 +38,12 @@ export interface VcoPatch {
   level: number;
   /** VCO 4 only (Model D Osc-3 trick): false = free-running, ignores the keyboard. */
   keyboardTrack: boolean;
+  /** Pulse-width offset from the 50% base, ±0.4 (10%..90% duty). */
+  pw: number;
+  /** Follow another VCO's pw value (index 0–3, one hop) instead of our own. */
+  pwSyncTo: number | null;
+  // PWM (LFO → width) now lives in the Virtual Patch: source MG1 → dest "pw",
+  // targeting this VCO. One general mechanism instead of a dedicated slider.
 }
 
 export interface MixerPatch {
@@ -90,13 +100,6 @@ export interface EffectsPatch {
   intervalSemitones: number; // 0..24
 }
 
-/** Shared pulse-width controls (Mono/Poly-style: one PW + PWM for the bank). */
-export interface PwmPatch {
-  /** Offset from each pulse waveform's base width, ±0.35. */
-  widthOffset: number;
-  /** MG1 → width modulation depth, 0..1. */
-  depth: number;
-}
 
 export interface Mg1Patch {
   wave: MgWaveform;
@@ -162,12 +165,28 @@ export type VpDest =
   | "fxAmount"
   | "mg1Rate";
 
+/**
+ * Destinations that live on individual oscillators — a route to one of these
+ * targets which VCO(s) it hits (VpSlot.vcos). The rest are global: one shared
+ * value (the filter is shared; noise, fx, and MG rate are single sources).
+ * With four VCOs a target selector beats the hardware's destination-per-osc
+ * list, which would balloon to 12+ entries.
+ */
+export const VP_PER_VCO_DESTS: readonly VpDest[] = ["pitch", "pw", "amp"];
+
+export function isPerVcoDest(dest: VpDest): boolean {
+  return VP_PER_VCO_DESTS.includes(dest);
+}
+
 /** One Virtual Patch routing slot (MS2000 heritage). */
 export interface VpSlot {
   source: VpSource;
   dest: VpDest;
   /** Bipolar depth −1..1. */
   amount: number;
+  /** For per-VCO destinations: which oscillators this route hits. Ignored for
+   *  global destinations. Defaults to all four. */
+  vcos: [boolean, boolean, boolean, boolean];
 }
 
 export type VirtualPatch = [VpSlot, VpSlot, VpSlot, VpSlot, VpSlot, VpSlot];
@@ -181,7 +200,6 @@ export interface Patch {
   keyAssign: KeyAssignPatch;
   glide: GlidePatch;
   effects: EffectsPatch;
-  pwm: PwmPatch;
   mg1: Mg1Patch;
   mg2: Mg2Patch;
   modMix: ModMixPatch;
@@ -199,7 +217,13 @@ function vcoDefault(n: 1 | 2 | 3 | 4): VcoPatch {
     fineCents: n === 2 ? 6 : 0, // slight classic detune out of the box
     level: 0.8,
     keyboardTrack: true,
+    pw: 0,
+    pwSyncTo: null,
   };
+}
+
+function vpSlotDefault(): VpSlot {
+  return { source: "off", dest: "cutoff", amount: 0, vcos: [true, true, true, true] };
 }
 
 export function defaultPatch(): Patch {
@@ -219,18 +243,17 @@ export function defaultPatch(): Patch {
       modDepth: 0,
       intervalSemitones: 0,
     },
-    pwm: { widthOffset: 0, depth: 0 },
     mg1: { wave: "triangle", rateHz: 5, toPitchCents: 0, toCutoff: 0 },
     mg2: { rateHz: 2, wave: "triangle" },
     modMix: { mix: 1, toPitch: true, toFilter: false },
     arp: { on: false, mode: "up", latch: false, rangeOct: 1, bpm: 120, gate: 0.5 },
     virtualPatch: [
-      { source: "off", dest: "cutoff", amount: 0 },
-      { source: "off", dest: "cutoff", amount: 0 },
-      { source: "off", dest: "cutoff", amount: 0 },
-      { source: "off", dest: "cutoff", amount: 0 },
-      { source: "off", dest: "cutoff", amount: 0 },
-      { source: "off", dest: "cutoff", amount: 0 },
+      vpSlotDefault(),
+      vpSlotDefault(),
+      vpSlotDefault(),
+      vpSlotDefault(),
+      vpSlotDefault(),
+      vpSlotDefault(),
     ],
     master: { tuneCents: 0, volume: 0.75, a440: false, bendRangeSemis: 2 },
   };
