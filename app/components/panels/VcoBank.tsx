@@ -37,32 +37,35 @@ function SyncSelect({
   label: string;
 }) {
   return (
-    <div className="seg seg--mini" role="radiogroup" aria-label={label}>
-      <button
-        type="button"
-        role="radio"
-        aria-checked={value === null}
-        className={`seg__btn${value === null ? " is-active" : ""}`}
-        onClick={() => onChange(null)}
-        title="Use this oscillator's own value"
-      >
-        —
-      </button>
-      {[0, 1, 2, 3]
-        .filter((i) => i !== self)
-        .map((i) => (
-          <button
-            key={i}
-            type="button"
-            role="radio"
-            aria-checked={value === i}
-            className={`seg__btn${value === i ? " is-active" : ""}`}
-            onClick={() => onChange(i)}
-            title={`Follow VCO ${i + 1}`}
-          >
-            {i + 1}
-          </button>
-        ))}
+    <div className="vco__sync">
+      <div className="seg seg--mini" role="radiogroup" aria-label={label}>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={value === null}
+          className={`seg__btn${value === null ? " is-active" : ""}`}
+          onClick={() => onChange(null)}
+          title="Use this oscillator's own value"
+        >
+          —
+        </button>
+        {[0, 1, 2, 3]
+          .filter((i) => i !== self)
+          .map((i) => (
+            <button
+              key={i}
+              type="button"
+              role="radio"
+              aria-checked={value === i}
+              className={`seg__btn${value === i ? " is-active" : ""}`}
+              onClick={() => onChange(i)}
+              title={`Follow VCO ${i + 1}`}
+            >
+              {i + 1}
+            </button>
+          ))}
+      </div>
+      <span className="sl__label">Sync</span>
     </div>
   );
 }
