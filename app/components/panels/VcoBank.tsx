@@ -65,6 +65,11 @@ function SyncSelect({
             </button>
           ))}
       </div>
+      {/* Spacer standing in for a slider's value readout, so the Sync label
+          sits on the same baseline as every other control label. */}
+      <span className="sl__value" aria-hidden="true">
+        &nbsp;
+      </span>
       <span className="sl__label">Sync</span>
     </div>
   );

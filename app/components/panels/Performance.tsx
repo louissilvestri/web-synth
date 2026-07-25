@@ -63,7 +63,7 @@ export function KeyAssignPanel() {
                 <Toggle label="Glide" value={glide.on} onChange={(on) => update("glide", { on })} />
                 <button
                   type="button"
-                  className="btn btn--ghost"
+                  className="btn btn--secondary"
                   onClick={() => {
                     const ok = captureChord();
                     setCaptureMsg(ok ? "ok" : "need");
