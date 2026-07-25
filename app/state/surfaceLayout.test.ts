@@ -55,6 +55,30 @@ describe("layout store", () => {
     expect(s.size).toEqual(DEFAULT_LAYOUT.size);
   });
 
+  it("reset() is undoable — the replaced arrangement comes back intact", () => {
+    const { reorder, resize, reset } = useLayoutStore.getState();
+    reorder("master", "keyAssign", true);
+    resize("mixer", "w", 1);
+    const customOrder = useLayoutStore.getState().order;
+    const customSize = useLayoutStore.getState().size;
+
+    reset();
+    expect(useLayoutStore.getState().undoable).not.toBeNull();
+    expect(useLayoutStore.getState().order).toEqual(DEFAULT_LAYOUT.order);
+
+    useLayoutStore.getState().undoReset();
+    const s = useLayoutStore.getState();
+    expect(s.order).toEqual(customOrder);
+    expect(s.size).toEqual(customSize);
+    expect(s.undoable).toBeNull(); // offer consumed
+  });
+
+  it("undoReset() is a no-op when nothing was reset", () => {
+    const before = useLayoutStore.getState().order;
+    useLayoutStore.getState().undoReset();
+    expect(useLayoutStore.getState().order).toEqual(before);
+  });
+
   it("dropping on the near half of a neighbor still acts (no-op flip)", () => {
     const { reorder } = useLayoutStore.getState();
     const [a, b] = DEFAULT_LAYOUT.order;

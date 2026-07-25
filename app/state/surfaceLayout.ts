@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { persistJson } from "./storageStatus";
 
 /**
  * Surface layout state (M4): panel order and size are data, not JSX, so the
@@ -84,6 +85,9 @@ export const DEFAULT_LAYOUT: LayoutState = {
 };
 
 const STORAGE_KEY = "web-synth.layout.v1";
+/** How long Undo stays available after a layout reset. */
+const UNDO_WINDOW_MS = 15000;
+let undoTimer: ReturnType<typeof setTimeout> | undefined;
 
 interface LayoutStore extends LayoutState {
   /** Arrange mode: drag handles + move/resize controls visible. */
@@ -100,6 +104,10 @@ interface LayoutStore extends LayoutState {
   reorderCtl: (scope: string, ids: string[], id: string, target: string, before: boolean) => void;
   moveCtl: (scope: string, ids: string[], id: string, dir: -1 | 1) => void;
   reset: () => void;
+  /** The arrangement replaced by the last reset, while undo is still offered. */
+  undoable: LayoutState | null;
+  undoReset: () => void;
+  dismissUndo: () => void;
   toJson: () => string;
   hydrate: () => void;
 }
@@ -130,14 +138,11 @@ function insertActive(list: string[], id: string, target: string, before: boolea
 }
 
 function persist(state: LayoutState): void {
-  try {
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ order: state.order, size: state.size, ctlOrders: state.ctlOrders }),
-    );
-  } catch {
-    // storage unavailable — layout just won't persist
-  }
+  persistJson(STORAGE_KEY, {
+    order: state.order,
+    size: state.size,
+    ctlOrders: state.ctlOrders,
+  });
 }
 
 export const useLayoutStore = create<LayoutStore>((set, get) => ({
@@ -212,9 +217,34 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
     });
   },
 
+  undoable: null,
+
   reset: () => {
+    // Destructive: keep the replaced arrangement so the rail can offer Undo
+    // (style guide §9 "act immediately with undo" — a modal would interrupt
+    // an arranging session for a recoverable change).
+    const { order, size, ctlOrders } = get();
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(() => set({ undoable: null }), UNDO_WINDOW_MS);
     persist(DEFAULT_LAYOUT);
-    set({ ...DEFAULT_LAYOUT, size: { ...DEFAULT_SIZE } });
+    set({
+      ...DEFAULT_LAYOUT,
+      size: { ...DEFAULT_SIZE },
+      undoable: { order, size, ctlOrders },
+    });
+  },
+
+  undoReset: () => {
+    const prev = get().undoable;
+    if (!prev) return;
+    clearTimeout(undoTimer);
+    persist(prev);
+    set({ ...prev, undoable: null });
+  },
+
+  dismissUndo: () => {
+    clearTimeout(undoTimer);
+    set({ undoable: null });
   },
 
   toJson: () =>

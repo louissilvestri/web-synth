@@ -63,6 +63,12 @@
 .pframe__dim { color: var(--text); font-size: var(--fs-xs); min-width: 18px;
   text-align: center; }
 .rail__sub { display: flex; flex-direction: column; gap: 2px; padding-left: 10px; }
+.rail__item--undo { color: var(--accent); }
+/* Persistence failure — never silent (see storageStatus.ts). */
+.storage-banner { margin: calc(var(--pad) * 2) calc(var(--pad) * 2) 0;
+  padding: var(--pad) calc(var(--pad) * 1.5); border-radius: var(--radius);
+  border: var(--bw) solid var(--alert); font-size: var(--fs-sm);
+  background: color-mix(in srgb, var(--alert) var(--fb-tint), var(--surface)); }
 
 /* ---- sortable controls (Arrange mode) ---- */
 .ctl { position: relative; display: flex; flex-direction: column; align-items: stretch;
@@ -126,9 +132,12 @@
   border: var(--bw) solid var(--border);
   border-radius: var(--radius); padding: 2px; gap: 2px; width: fit-content;
   max-width: 100%; }
+/* min-height 22px + the 2px gap = 24px row pitch, so a segmented control that
+   wraps still satisfies WCAG 2.5.8's spacing exception between stacked rows. */
 .seg__btn { border: none; background: none; color: var(--muted); cursor: pointer;
   padding: 4px 9px; border-radius: calc(var(--radius) - 3px); font-size: var(--fs-xs);
-  font-family: var(--font-body); transition: background var(--dur) var(--ease); min-width: 30px; }
+  font-family: var(--font-body); transition: background var(--dur) var(--ease);
+  min-width: 30px; min-height: 22px; }
 .seg__btn:hover { color: var(--text); }
 .seg__btn.is-active { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .seg__btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -181,7 +190,11 @@
   border-radius: 0 0 7px 7px; background: var(--text); cursor: pointer; padding: 0;
   min-width: 0; }
 .kbd__key.is-active { background: var(--accent); }
-.kbd__key--black { flex: 0 0 0; z-index: 2; margin: 0 -1.4%; width: 2.8%;
+/* Black keys: the basis must carry the width — `flex: 0 0 0` overrode the
+   `width` declaration and collapsed them to ~2px. Basis ≈ 60% of a white key
+   (piano proportion); the negative margins cancel it so white keys keep
+   their size. min-width keeps them clickable on a narrow keyboard. */
+.kbd__key--black { flex: 0 0 2.9%; z-index: 2; margin: 0 -1.45%; min-width: 26px;
   height: 58%; background: var(--bg); border-radius: 0 0 5px 5px; }
 .kbd__key--black.is-active { background: var(--accent); }
 .kbd__key:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; z-index: 3; }

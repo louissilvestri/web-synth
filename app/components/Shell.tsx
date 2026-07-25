@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useStorageStatus } from "../state/storageStatus";
 import { useLayoutStore } from "../state/surfaceLayout";
 
 /** Left rail per style guide §7 — Presets/Settings unlock in M5. */
@@ -9,6 +10,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const setArrange = useLayoutStore((s) => s.setArrange);
   const reset = useLayoutStore((s) => s.reset);
   const toJson = useLayoutStore((s) => s.toJson);
+  const undoable = useLayoutStore((s) => s.undoable);
+  const undoReset = useLayoutStore((s) => s.undoReset);
+  const storageFailed = useStorageStatus((s) => s.failed);
+  const storageReason = useStorageStatus((s) => s.reason);
   const [copied, setCopied] = useState(false);
 
   return (
@@ -40,9 +45,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
             >
               {copied ? "Copied ✓" : "Copy JSON"}
             </button>
-            <button type="button" className="rail__item" onClick={reset}>
-              Reset layout
-            </button>
+            {undoable ? (
+              <button
+                type="button"
+                className="rail__item rail__item--undo"
+                onClick={undoReset}
+              >
+                ↶ Undo reset
+              </button>
+            ) : (
+              <button type="button" className="rail__item" onClick={reset}>
+                Reset layout
+              </button>
+            )}
           </div>
         )}
         <span className="rail__item" aria-disabled="true" title="Coming in M5">
@@ -61,7 +76,15 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </a>
         <span className="rail__foot u-mono">M4 · surface layout</span>
       </nav>
-      <main>{children}</main>
+      <main>
+        {storageFailed && (
+          <div className="storage-banner" role="alert">
+            <strong>Changes aren&apos;t being saved.</strong> {storageReason} Your
+            patch and layout will be lost when this page reloads.
+          </div>
+        )}
+        {children}
+      </main>
     </div>
   );
 }
