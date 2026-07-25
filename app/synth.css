@@ -17,20 +17,26 @@
 .rail__item[aria-disabled="true"]:hover { background: none; }
 .rail__foot { margin-top: auto; font-size: var(--fs-xs); color: var(--muted); padding: 0 10px; }
 
-/* ---- panel grid: signal-flow order ---- */
-.synth { padding: calc(var(--pad) * 2); display: flex; flex-direction: column;
+/* ---- panel grid: signal-flow order, uniform block units ----
+   One block = the Ladder Filter panel's width × half the Oscillator panel's
+   height. Every panel spans a whole number of blocks on each axis (M4), so
+   the surface reads as a tidy grid instead of ragged content-sized cards. */
+/* A square block: the Ladder Filter panel's width, and half the Oscillator
+   panel's height rounded up so 2 blocks clear the tallest 2-block content. */
+.synth { --block-w: 180px; --block-h: 180px;
+  padding: calc(var(--pad) * 2); display: flex; flex-direction: column;
   gap: calc(var(--gap) * 3); max-width: 1400px; }
-.synth__panels { display: flex; flex-wrap: wrap; gap: calc(var(--gap) * 3);
-  /* Natural heights: stretch would inflate every panel in a row to the tallest
-     neighbor, leaving dead space inside cards (style-guide violation). Cards
-     end where their content ends; remaining air belongs to the background. */
-  align-items: flex-start; }
+.synth__panels { display: grid; gap: calc(var(--gap) * 3);
+  grid-template-columns: repeat(auto-fill, var(--block-w));
+  grid-auto-rows: var(--block-h); align-items: stretch;
+  justify-content: start; }
 .panel { padding: calc(var(--pad) * 1.5); display: flex; flex-direction: column;
   gap: calc(var(--gap) * 2); }
-/* ---- panel frames (layout-driven order/width + Arrange mode, M4) ---- */
-.pframe { display: flex; flex-direction: column; }
-.pframe > .panel { flex: 1; }
-.pframe--wide { flex: 1 1 100%; }
+/* ---- panel frames (layout-driven order/size + Arrange mode, M4) ---- */
+.pframe { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+/* Panels fill their block span; content that outgrows it scrolls inside the
+   card rather than spilling over neighbors. */
+.pframe > .panel { flex: 1; min-height: 0; overflow: auto; }
 .pframe--arrange { outline: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
   outline-offset: 3px; border-radius: var(--radius); cursor: grab; }
 .pframe__bar { display: flex; align-items: center; gap: var(--gap);
@@ -44,7 +50,14 @@
   padding: 2px 6px; border-radius: 5px; font-size: var(--fs-xs); }
 .pframe__btn:hover { background: var(--surface-2); color: var(--text); }
 .pframe__btn.is-active { color: var(--accent); }
+.pframe__btn:disabled { opacity: 0.35; cursor: default; }
+.pframe__btn:disabled:hover { background: none; color: var(--muted); }
 .pframe__btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Block-size steppers: −  2w  + */
+.pframe__step { display: inline-flex; align-items: center; gap: 1px;
+  border: var(--bw) solid var(--border); border-radius: 5px; margin-left: 3px; }
+.pframe__dim { color: var(--text); font-size: var(--fs-xs); min-width: 18px;
+  text-align: center; }
 .rail__sub { display: flex; flex-direction: column; gap: 2px; padding-left: 10px; }
 
 /* ---- sortable controls (Arrange mode) ---- */
@@ -186,6 +199,11 @@
     border-right: none; border-bottom: var(--bw) solid var(--border); }
   .rail__brand { margin: 0 10px 0 6px; }
   .rail__foot { display: none; }
+  /* Too narrow for the block grid: single column, natural heights, and the
+     stored spans stop applying (they'd overflow the viewport). */
+  .synth__panels { grid-template-columns: 1fr; grid-auto-rows: auto; }
+  .pframe { grid-column: 1 / -1 !important; grid-row: auto !important; }
+  .pframe > .panel { overflow: visible; }
 }
 
 @media (prefers-reduced-motion: reduce) {
