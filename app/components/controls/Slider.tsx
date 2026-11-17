@@ -77,6 +77,10 @@ export function Slider({
   };
 
   const norm = valueToNorm(value, scale);
+  // Round to 3 decimals: sub-pixel precise, and — critically — a short stable
+  // string. Next's prerender minifies long decimals in inline styles, so full
+  // float precision here hydration-mismatches against the server HTML.
+  const pct = Math.round(norm * 100000) / 1000;
   const text = format ? format(value) : String(Math.round(value * 100) / 100);
 
   return (
@@ -100,8 +104,8 @@ export function Slider({
           onChange(nudge(value, e.deltaY < 0 ? 1 : -1, e.shiftKey, scale));
         }}
       >
-        <div className="sl__fill" style={{ height: `${norm * 100}%` }} />
-        <div className="sl__thumb" style={{ bottom: `calc(${norm * 100}% - 5px)` }} />
+        <div className="sl__fill" style={{ height: `${pct}%` }} />
+        <div className="sl__thumb" style={{ bottom: `calc(${pct}% - 5px)` }} />
       </div>
       <span className="sl__value u-mono">{text}</span>
       <span className="sl__label">{label}</span>

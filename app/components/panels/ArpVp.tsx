@@ -1,10 +1,11 @@
 "use client";
 
-import type { VpDest, VpSource } from "../../../engine/core/patch";
+import { isPerVcoDest, type VpDest, type VpSource } from "../../../engine/core/patch";
 import { useSynthStore } from "../../state/store";
 import { Segmented, Toggle } from "../controls/Segmented";
 import { Slider } from "../controls/Slider";
 import { fmtHz, fmtPercent } from "../controls/sliderMath";
+import { Sortable } from "../controls/Sortable";
 
 export function ArpPanel() {
   const arp = useSynthStore((s) => s.patch.arp);
@@ -15,42 +16,72 @@ export function ArpPanel() {
   return (
     <section className="card panel" aria-label="Arpeggiator">
       <h2 className="panel__title">Arpeggiator</h2>
-      <div className="panel__row">
-        <Toggle
-          label="Arp"
-          value={arp.on}
-          onChange={(on) => {
-            allNotesOff();
-            update("arp", { on });
-          }}
-        />
-        <Toggle label="Latch" value={arp.latch} onChange={(latch) => update("arp", { latch })} />
-      </div>
-      <Segmented
-        label="Arp mode"
-        options={[
-          { value: "up", text: "Up" },
-          { value: "down", text: "Down" },
-          { value: "updown", text: "Up·Dn" },
+      <Sortable
+        scope="arp"
+        className="panel__blocks"
+        items={[
+          {
+            id: "toggles",
+            el: (
+              <div className="panel__row">
+                <Toggle
+                  label="Arp"
+                  value={arp.on}
+                  onChange={(on) => {
+                    allNotesOff();
+                    update("arp", { on });
+                  }}
+                />
+                <Toggle label="Latch" value={arp.latch} onChange={(latch) => update("arp", { latch })} />
+              </div>
+            ),
+          },
+          {
+            id: "mode",
+            el: (
+              <Segmented
+                label="Arp mode"
+                options={[
+                  { value: "up", text: "Up" },
+                  { value: "down", text: "Down" },
+                  { value: "updown", text: "Up·Dn" },
+                ]}
+                value={arp.mode}
+                onChange={(mode) => update("arp", { mode })}
+              />
+            ),
+          },
+          {
+            id: "range",
+            el: (
+              <Segmented
+                label="Arp range"
+                options={[
+                  { value: 1, text: "1 oct" },
+                  { value: 2, text: "2 oct" },
+                  { value: 3, text: "3 oct" },
+                ]}
+                value={arp.rangeOct}
+                onChange={(rangeOct) => update("arp", { rangeOct: rangeOct as 1 | 2 | 3 })}
+              />
+            ),
+          },
+          {
+            id: "sliders",
+            el: (
+              <Sortable
+                scope="arp.sliders"
+                className="panel__sliders"
+                items={[
+                  { id: "bpm", el: <Slider label="BPM" min={40} max={240} step={1} value={arp.bpm} format={(v) => `${Math.round(v)}`} onChange={(bpm) => update("arp", { bpm })} /> },
+                  { id: "gate", el: <Slider label="Gate" min={0.1} max={0.95} value={arp.gate} format={fmtPercent} onChange={(gate) => update("arp", { gate })} /> },
+                  { id: "mg2", el: <Slider label="MG2" min={0.05} max={30} log value={mg2.rateHz} format={fmtHz} onChange={(rateHz) => update("mg2", { rateHz })} /> },
+                ]}
+              />
+            ),
+          },
         ]}
-        value={arp.mode}
-        onChange={(mode) => update("arp", { mode })}
       />
-      <Segmented
-        label="Arp range"
-        options={[
-          { value: 1, text: "1 oct" },
-          { value: 2, text: "2 oct" },
-          { value: 3, text: "3 oct" },
-        ]}
-        value={arp.rangeOct}
-        onChange={(rangeOct) => update("arp", { rangeOct: rangeOct as 1 | 2 | 3 })}
-      />
-      <div className="panel__sliders">
-        <Slider label="BPM" min={40} max={240} step={1} value={arp.bpm} format={(v) => `${Math.round(v)}`} onChange={(bpm) => update("arp", { bpm })} />
-        <Slider label="Gate" min={0.1} max={0.95} value={arp.gate} format={fmtPercent} onChange={(gate) => update("arp", { gate })} />
-        <Slider label="MG2" min={0.05} max={30} log value={mg2.rateHz} format={fmtHz} onChange={(rateHz) => update("mg2", { rateHz })} />
-      </div>
     </section>
   );
 }
@@ -89,7 +120,7 @@ export function VirtualPatchPanel() {
   };
 
   return (
-    <section className="card panel panel--wide" aria-label="Virtual patch modulation matrix">
+    <section className="card panel" aria-label="Virtual patch modulation matrix">
       <h2 className="panel__title">Virtual patch</h2>
       <div className="vp">
         {vp.map((slot, i) => (
@@ -123,6 +154,30 @@ export function VirtualPatchPanel() {
                 ))}
               </select>
             </label>
+            {/* Per-VCO destinations reveal a target picker; globals don't. */}
+            {isPerVcoDest(slot.dest) && (
+              <div className="vp__field">
+                <span className="vp__label">→ VCO</span>
+                <div className="vp__targets" role="group" aria-label={`Slot ${i + 1} target oscillators`}>
+                  {slot.vcos.map((on, k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      aria-pressed={on}
+                      className={`vp__target${on ? " is-on" : ""}`}
+                      onClick={() => {
+                        const vcos = [...slot.vcos] as typeof slot.vcos;
+                        vcos[k] = !vcos[k];
+                        setSlot(i, { vcos });
+                      }}
+                      title={`${on ? "Stop targeting" : "Target"} VCO ${k + 1}`}
+                    >
+                      {k + 1}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <Slider
               label="Amount"
               min={-1}

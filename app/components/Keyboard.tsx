@@ -69,11 +69,11 @@ export function Keyboard() {
   return (
     <section className="card kbd" aria-label="Keyboard">
       <div className="kbd__side">
-        <button type="button" className="btn btn--ghost" onClick={() => shiftOctave(-1)} aria-label="Octave down (Z)">
+        <button type="button" className="btn btn--secondary" onClick={() => shiftOctave(-1)} aria-label="Octave down (Z)">
           − oct
         </button>
         <span className="u-mono u-muted">C{baseOctave}</span>
-        <button type="button" className="btn btn--ghost" onClick={() => shiftOctave(1)} aria-label="Octave up (X)">
+        <button type="button" className="btn btn--secondary" onClick={() => shiftOctave(1)} aria-label="Octave up (X)">
           + oct
         </button>
       </div>

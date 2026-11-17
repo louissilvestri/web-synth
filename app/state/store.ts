@@ -7,6 +7,7 @@ import { audioEngine } from "../../engine/host/audioEngine";
 import type { MidiDevice } from "../../engine/host/midi";
 import { MidiInput } from "../../engine/host/midi";
 import { mergeSavedPatch } from "./migrate";
+import { persistJson } from "./storageStatus";
 
 /**
  * The patch store — single source of truth for the instrument state.
@@ -66,13 +67,9 @@ function loadWorkingPatch(): Patch | null {
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 function autosave(patch: Patch): void {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(patch));
-    } catch {
-      // storage full/unavailable — the live engine state is unaffected
-    }
-  }, 300);
+  // Failures surface via the storage banner rather than being swallowed —
+  // silently not-saving is how a session's work disappears on reload.
+  saveTimer = setTimeout(() => persistJson(STORAGE_KEY, patch), 300);
 }
 
 function pushPatch(patch: Patch): void {

@@ -13,7 +13,7 @@ function run(fn: () => number, n: number): number[] {
 
 describe("Oscillator", () => {
   it("stays within [-1.1, 1.1] for every waveform", () => {
-    for (const wave of ["triangle", "shark", "saw", "square", "pulseWide", "pulseNarrow"] as const) {
+    for (const wave of ["triangle", "shark", "saw", "pulse"] as const) {
       const osc = new Oscillator(SR);
       for (const v of run(() => osc.tick(440, wave), 4800)) {
         expect(Math.abs(v)).toBeLessThan(1.1);
